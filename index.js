@@ -179,9 +179,10 @@ module.exports = async (options = {}) => {
     res.setHeader("Content-Type", "text/javascript");
     res.end(nullJs);
   });
-  app.use("/static", express.static(options.static ?? "files"));
+  const static = options.static ?? "./files");
+  app.use("/static", express.static(static));
 
-  const skeleton = fs.readFileSync(options.skeleton ?? "./files/skeleton.html");
+  const skeleton = fs.readFileSync(options.skeleton ?? static + "/skeleton.html");
   app.get("*", (req, res) => {
     res.end(skeleton);
   });
