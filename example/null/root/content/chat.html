@@ -1,0 +1,25 @@
+<div>
+  Global chat
+</div>
+<div>
+  You can also chat privately with:
+  <a class="link text" href="/chat/gXLg" null-link>[gXLg]</a>
+  <a class="link text" href="/chat/MrAnonymous" null-link>[MrAnonymous]</a>
+</div>
+
+<div>
+  <null-loader null="index" null-loads="message">
+    <script null-loader>
+      return (req, res) => {
+        const index = parseInt(req.body.index);
+        if (index < 20) return (index + 1).toString();
+        else return "";
+      };
+    </script>
+  </null-loader>
+
+  <null-container null="message" null-dummy null-tracker="messageId">
+  </null-container>
+
+  <null-container null="end"></null-container>
+</div>

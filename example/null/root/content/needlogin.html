@@ -1,0 +1,14 @@
+<div>
+  You have to be logged in to access this page!
+</div>
+
+<null-request null="gotologin">
+  <span class="link text">[Login]</span>
+  <script null-handler>
+   return () => {
+     const redirect = window.location.pathname + window.location.search + window.location.hash;
+     const b = new URLSearchParams({ redirect });
+     navigate("/login?" + b.toString());
+   };
+  </script>
+</null-request>

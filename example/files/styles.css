@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka&display=swap');
+
+body {
+  margin: 0;
+  font-family: "Fredoka", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+.navi {
+  font-size: 32px;
+  margin: 10px;
+}
+
+.link {
+  text-decoration: none;
+  color: black;
+  cursor: pointer;
+}
+
+.text {
+  color: white;
+}
+
+.link:hover {
+  color: gray;
+}
+
+.account {
+  background-color: #477280;
+  padding: 10px;
+  border-radius: 10px;
+  position: relative;
+  text-align: center;
+  min-width: 100px;
+  width: fit-content;
+}
+.account.open {
+  border-radius: 10px 10px 0 0;
+}
+
+.account-menu-container {
+  display: none;
+  position: absolute;
+  width: 100%;
+}
+.account.open .account-menu-container {
+  display: block;
+}
+
+.account-menu {
+  position: relative;
+  top: 10px;
+  left: -10px;
+  padding: 0 10px 10px 10px;
+  background-color: #477280;
+  border-radius: 0 0 10px 10px;
+}
+
+.account-menu > div {
+  padding: 5px 0 5px 0;
+}

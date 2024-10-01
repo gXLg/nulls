@@ -1,0 +1,35 @@
+{
+  "name": "nulls",
+  "version": "1.0.0",
+  "description": "Simple HTML framework for express",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "scripts"
+  ],
+  "scripts": {
+    "test": "cd example; node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gXLg/nulls.git"
+  },
+  "keywords": [
+    "web",
+    "framework",
+    "html",
+    "express.js"
+  ],
+  "author": "gXLg",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gXLg/nulls/issues"
+  },
+  "homepage": "https://github.com/gXLg/nulls#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}

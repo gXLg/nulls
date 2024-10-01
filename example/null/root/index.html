@@ -1,0 +1,33 @@
+<div style="display: flex; flex-direction: column; min-height: 100vh;">
+  <div style="flex: 0; background-color: lightblue; padding: 20px; display: flex; align-items: center;">
+    <div style="flex: 0;">[Logo]</div>
+    <div style="flex: 5;">
+      <a class="navi link" href="/" null-link>[Home]</a><a class="navi link" href="/chat" null-link>[Chat]</a>
+    </div>
+    <div style="flex: 1;">
+      <div class="account" onclick="this.classList.toggle('open')">
+        <null-container null="auth" null-provider="req => req.auth ? 'account' : 'login'"></null-container>
+      </div>
+    </div>
+  </div>
+  <div style="background-color: #150f1c; flex: 1; color: white; padding: 20px;">
+    <null-container null="content" null-title>
+      <script null-provider>
+        return req => {
+          const path = req.body.path ?? "/";
+          if (path == "/") return ["home", "Null Chat"];
+          if (path == "/chat") return ["chat", "Null Chat - Chatting"];
+          if (path == "/login") return ["login", "Null Chat - Login"];
+          if (path == "/register") return ["register", "Null Chat - Register"];
+          if (path.startsWith("/chat/")) {
+            if (!req.auth) return ["needlogin", "Null Chat"];
+            const [empty, chat, id, ...x] = path.split("/");
+            if (x.length || !id.match(/^[a-z0-9_]+$/i)) return ["notfound", "Null Chat"];
+            return ["chatroom", "Null Chat - " + id];
+          }
+          return ["notfound", "Null Chat"];
+        };
+      </script>
+    </null-container>
+  </div>
+</div>

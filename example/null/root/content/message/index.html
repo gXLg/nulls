@@ -1,0 +1,46 @@
+<div>
+  <null-data null="message" null-tracks="messageId" null-cache>
+    <script null-validator>
+      // from: https://stackoverflow.com/a/52171480
+      TSH=s=>{for(var i=0,h=9;i<s.length;)h=Math.imul(h^s.charCodeAt(i++),9**9);return h^h>>>9}
+      return r => {
+        const auth = r.auth;
+        const id = r.body.messageId;
+        const path = r.body.path;
+        const hash = TSH(auth + ":" + id + ":" + path).toString(16);
+        return hash;
+      };
+    </script>
+    <script null-processor>
+      return r => {
+        const id = parseInt(r.body.messageId);
+        const path = r.body.path;
+        if (path == "/chat") {
+          const user = (id % 2) ? "Bot" : "User";
+          const content = (id % 2) ? "Pong!" : "Ping?";
+          return { user, content };
+        }
+        const other = path.match(/^\/chat\/(.*?)$/)[1];
+        const user = (id % 2) ? other : r.auth;
+        const m = ["Bla"];
+        for (let i = 0; i < 5; i ++) {
+          const r = Math.random() * 8;
+          if (r < 1) m.push(", bla");
+          else if (r < 2) m.push("... Bla");
+          else if (r < 3) m.push("? Bla");
+          else if (r < 4) m.push("! Bla");
+          else if (r < 6) m.push(" bla");
+          else m.push("bla");
+        }
+        m.push(["... Bla", "? Bla", "! Bla"].includes(m.slice(-1)[0]) ? "bla))" : ". Bla!!1!");
+        const content = m.join("");
+        return { user, content };
+      };
+    </script>
+    <script null-parser>
+      return ({ user, content }) => {
+        return "<b>" + user + "</b>: " + content;
+      };
+    </script>
+  </null-data>
+</div>

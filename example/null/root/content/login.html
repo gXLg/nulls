@@ -1,0 +1,41 @@
+<div>
+  Login here to get access to the coolest website ever!
+</div>
+<br>
+<div>
+  <form>
+    Username: <input type="text" null-tracker="username" placeholder="Username"><br>
+    Password: <input type="password" null-tracker="password" placeholder="Password"><br>
+    <null-request null="login" null-tracks="username,password">
+      <script null-processor>
+        return (req, res) => {
+          const u = req.body.username;
+          const p = req.body.password;
+          const o = {
+            "httpOnly": true,
+            "sameSite": true,
+            "maxAge": 30 * 24 * 60 * 60 * 1000
+          };
+          if (u == "gXLg" && p == "password123") {
+            res.cookie("token", "token1", o);
+            return { "status": "success" };
+          } else if (u == "MrAnonymous" && p == "qwertzuiop") {
+            res.cookie("token", "token2", o);
+            return { "status": "success" };
+          } else {
+            return { "status": "wrong" };
+          }
+        };
+      </script>
+      <script null-handler>
+        return s => {
+          const p = new URLSearchParams(window.location.search);
+          const back = p.get("redirect") ?? "/";
+          if (s.status == "success") navigate(back);
+          else alert("Wrong login data!");
+        };
+      </script>
+      <input type="submit" value="Login!">
+    </null-request>
+  </form>
+</div>
