@@ -80,7 +80,7 @@ module.exports = async (options = {}) => {
 
   app.use(cookieParser());
   if (options.https) {
-    app.use("trust proxy");
+    app.enable("trust proxy");
   }
   app.use(async (req, res, next) => {
     if (options.https && !req.secure) return res.redirect("https://" + req.get("host") + req.url);
