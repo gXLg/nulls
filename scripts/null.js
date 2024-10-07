@@ -184,10 +184,15 @@ async function handleNulls(p = "root", force = false) {
         delete currentTypes[pp];
       }
     }
-    for (const data of element.querySelectorAll("null-data")) {
+    for (const data of element.querySelectorAll("null-data:not([null-refresh])")) {
       const tracker = collectTrackers(pathStack, data);
       await handleData(data, path, tracker, force);
     }
+  }
+  for (const data of element.querySelectorAll("null-data[null-refresh]")) {
+    if (data.closest("null-container") != element) continue;
+    const tracker = collectTrackers(pathStack, data);
+    await handleData(data, path, tracker, force);
   }
   element.classList.remove("null-awaiting");
 
@@ -199,7 +204,7 @@ async function handleNulls(p = "root", force = false) {
       for (const e of es) {
         if (e.intersectionRatio > 0) {
           obs.disconnect();
-          handleNulls(path + "/" + nul);
+          handleNulls(path + "/" + nul, force);
           return;
         }
       }
