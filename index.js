@@ -160,7 +160,7 @@ module.exports = async (options = {}) => {
           const loader = await handleLoader(l);
           const upl = upload.fields(await handleUpload(l));
           app.post("/null-load" + path + "/" + nul, upl, async (req, res) => {
-            res.end(await loader(req, res));
+            res.end((await loader(req, res)).toString());
           });
         }
 
