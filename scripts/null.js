@@ -260,15 +260,19 @@ async function getTitle(link) {
 
 async function navigate(link) {
   const title = await getTitle(link);
-  window.history.pushState(null, title, link.href);
+  window.history.pushState({ title }, "", link.href);
+  document.title = title;
   handleNulls();
 }
 
-window.onload = async () => {
-  const title = await getTitle(window.location);
+window.onload = () => navigate(window.location);
+
+window.onpopstate = event => {
+  if (!event.state) return;
+  const { title } = event.state;
+  document.title = title;
   handleNulls();
-};
-window.onpopstate = () => handleNulls();
+}
 
 async function insertDummy(nul, element, anchor, after, path) {
   const c = document.createElement("div");
