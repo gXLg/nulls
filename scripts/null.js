@@ -92,10 +92,15 @@ async function getDummy(path) {
   return pr;
 }
 
-function collectTrackers(pathStack, data) {
+function initTracker(link) {
   const fd = new FormData();
-  fd.append("path", window.location.pathname);
-  fd.append("search", window.location.search);
+  fd.append("path", link.pathname);
+  fd.append("search", link.search);
+  return fd;
+}
+
+function collectTrackers(pathStack, data) {
+  const fd = initTracker(window.location);
   if (!data.hasAttribute("null-tracks")) return fd;
   const trackers = data.getAttribute("null-tracks").split(/,[ ]*/);
   for (const name of trackers) {
@@ -167,11 +172,6 @@ async function handleNulls(p = "root", force = false) {
   const path = lp.join("/");
   const tracker = collectTrackers(pathStack, element);
 
-  if (p == "root") {
-    const title = await request("/null-title", tracker);
-    if (title) document.title = title;
-  }
-
   const type = await request("/null-container/" + path, tracker);
   if (currentTypes[p] != type || force) {
     currentTypes[p] = type;
@@ -213,7 +213,7 @@ async function handleNulls(p = "root", force = false) {
     if (link.closest("null-container") != element) continue;
     link.onclick = event => {
       event.preventDefault();
-      navigate(link.href);
+      navigate(link);
     };
   }
 
@@ -252,12 +252,22 @@ async function handleNulls(p = "root", force = false) {
   }
 }
 
-function navigate(href) {
-  window.history.pushState(null, document.title, href);
+async function getTitle(link) {
+  const fd = initTracker(link);
+  const title = await request("/null-title", fd);
+  return title;
+}
+
+async function navigate(link) {
+  const title = await getTitle(link);
+  window.history.pushState(null, title, link.href);
   handleNulls();
 }
 
-window.onload = () => handleNulls();
+window.onload = async () => {
+  const title = await getTitle(window.location);
+  handleNulls();
+};
 window.onpopstate = () => handleNulls();
 
 async function insertDummy(nul, element, anchor, after, path) {
