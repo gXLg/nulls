@@ -1,5 +1,7 @@
 const nulls = require("..");
 
+const title = require("./lib/title.js");
+
 (async () => {
 
   // simple static credentials
@@ -13,6 +15,10 @@ const nulls = require("..");
     },
     "ready": () => {
       console.log("Server up!");
+    },
+    "seo": req => {
+      const path = req.path;
+      return "<title>" + title(path, null) + "</title>";
     }
   });
 

@@ -167,14 +167,12 @@ async function handleNulls(p = "root", force = false) {
   const path = lp.join("/");
   const tracker = collectTrackers(pathStack, element);
 
-  let type;
-  if (element.hasAttribute("null-title")) {
-    const [a, b] = await request("/null-container/" + path, tracker, true);
-    type = a;
-    document.title = b;
-  } else {
-    type = await request("/null-container/" + path, tracker);
+  if (p == "root") {
+    const title = await request("/null-title", tracker);
+    if (title) document.title = title;
   }
+
+  const type = await request("/null-container/" + path, tracker);
   if (currentTypes[p] != type || force) {
     currentTypes[p] = type;
     element.innerHTML = await getNull(path, type);

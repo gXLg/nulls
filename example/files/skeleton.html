@@ -4,7 +4,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="utf-8">
     <link rel="stylesheet" href="/static/styles.css">
-    <title>Null Chat</title>
+    <script null-title>
+      const title = require("./lib/title.js");
+      return req => {
+        const path = req.body.path ?? "/";
+        const auth = req.auth;
+        return title(path, auth);
+      };
+    </script>
   </head>
   <body>
     <null-container null="root"></null-container>

@@ -11,21 +11,21 @@
     </div>
   </div>
   <div style="background-color: #150f1c; flex: 1; color: white; padding: 20px;">
-    <null-container null="content" null-title>
+    <null-container null="content">
       <script null-provider>
         return req => {
           const path = req.body.path ?? "/";
-          if (path == "/") return ["home", "Null Chat"];
-          if (path == "/chat") return ["chat", "Null Chat - Chatting"];
-          if (path == "/login") return ["login", "Null Chat - Login"];
-          if (path == "/register") return ["register", "Null Chat - Register"];
+          if (path == "/") return "home";
+          if (path == "/chat") return "chat";
+          if (path == "/login") return "login";
+          if (path == "/register") return "register";
           if (path.startsWith("/chat/")) {
-            if (!req.auth) return ["needlogin", "Null Chat"];
+            if (!req.auth) return "needlogin";
             const [empty, chat, id, ...x] = path.split("/");
-            if (x.length || !id.match(/^[a-z0-9_]+$/i)) return ["notfound", "Null Chat"];
-            return ["chatroom", "Null Chat - " + id];
+            if (x.length || !id.match(/^[a-z0-9_]+$/i)) return "notfound";
+            return "chatroom";
           }
-          return ["notfound", "Null Chat"];
+          return "notfound";
         };
       </script>
     </null-container>

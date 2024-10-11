@@ -69,6 +69,9 @@ async function handleLoader(element) {
 async function handleValidator(element) {
   return await handleAttrScript(element, "null-validator", () => "", true);
 }
+async function handleTitle(element) {
+  return await handleAttrScript(element, "null-title", () => "", true);
+}
 
 
 module.exports = async (options = {}) => {
@@ -83,8 +86,10 @@ module.exports = async (options = {}) => {
     app.enable("trust proxy");
   }
   app.use(async (req, res, next) => {
-    if (options.https && !req.secure) return res.redirect("https://" + req.get("host") + req.url);
-    await options.hook?.(req);
+    const host = req.get("host");
+    if (host != "localhost" && options.https && !req.secure)
+      return res.redirect("https://" + host + req.url);
+    await options.hook?.(req, res);
     next();
   });
 
@@ -103,13 +108,10 @@ module.exports = async (options = {}) => {
           const l = html("null-container:eq(" + i + ")");
           const nul = l.attr("null");
           const provider = await handleProvider(l);
-          const title = l.attr("null-title") != null;
           const dummy = l.attr("null-dummy") != null;
           const upl = upload.fields(await handleUpload(l));
           app.post("/null-container" + path + "/" + nul, upl, async (req, res) => {
-            const r = await provider(req, res);
-            if (title) res.json(r);
-            else res.end(r);
+            res.end(await provider(req, res));
           });
           if (dummy) {
             l.attr("null-dummy", null);
@@ -182,8 +184,26 @@ module.exports = async (options = {}) => {
   const static = options.static ?? "./files";
   app.use("/static", express.static(static));
 
-  const skeleton = fs.readFileSync(options.skeleton ?? static + "/skeleton.html");
+  const skeletonRaw = fs.readFileSync(options.skeleton ?? static + "/skeleton.html");
+  const skelHtml = cheerio.load(skeletonRaw);
+  const title = await handleTitle(skelHtml("head"));
+  app.post("/null-title", upload.none(), async (req, res) => {
+    res.end(await title(req, res));
+  });
+  const skeleton = skelHtml.html();
+
   app.get("*", (req, res) => {
+    if (options.seo) {
+      const userAgent = req.headers["user-agent"];
+      const crawlers = options.crawlers ?? /googlebot|bingbot|yahoo|duckduckbot|baiduspider|yandexbot|slurp|facebot|linkedinbot/i;
+      if (crawlers.test(userAgent)) {
+        const html = cheerio.load(skeleton);
+        const seo = options.seo(req, res);
+        html("head").append(seo);
+        res.end(html.html());
+        return;
+      }
+    }
     res.end(skeleton);
   });
 
