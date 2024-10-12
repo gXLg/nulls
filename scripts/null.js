@@ -152,6 +152,18 @@ async function handleData(data, ppath, tracker, force) {
   }
 }
 
+function setContainer(element, html) {
+  // dynamically enable script tags to load
+  element.innerHTML = html;
+  for (const old of [...element.querySelectorAll("script")]) {
+    const news = document.createElement("script");
+    [...old.attributes].forEach(a => news.setAttribute(a.name, a.value));
+    const text = document.createTextNode(old.innerHTML);
+    news.appendChild(text);
+    old.parentNode.replaceChild(news, old);
+  }
+}
+
 const currentTypes = {};
 async function handleNulls(p = "root", force = false) {
   let element = document.body;
@@ -175,7 +187,7 @@ async function handleNulls(p = "root", force = false) {
   const type = await request("/null-container/" + path, tracker);
   if (currentTypes[p] != type || force) {
     currentTypes[p] = type;
-    element.innerHTML = await getNull(path, type);
+    setContainer(element, await getNull(path, type));
     // remove cached types of sub containers (since they are gone)
     for (const pp in currentTypes) {
       if (pp.startsWith(p) && pp != p) {
@@ -277,7 +289,7 @@ window.onpopstate = event => {
 async function insertDummy(nul, element, anchor, after, path) {
   const c = document.createElement("div");
   const d = await getDummy(path + "/" + nul);
-  c.innerHTML = d;
+  setContainer(c, d);
   const dummy = c.querySelector("null-container");
   dummy.setAttribute("null-element", element);
   dummy.classList.add("null-awaiting");
