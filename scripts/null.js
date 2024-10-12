@@ -104,7 +104,7 @@ function collectTrackers(pathStack, data) {
   if (!data.hasAttribute("null-tracks")) return fd;
   const trackers = data.getAttribute("null-tracks").split(/,[ ]*/);
 
-  function extract(track) {
+  function extract(name, track) {
     if (track == null) return false;
     const tagName = track.tagName.toLowerCase();
     let found = true;
@@ -121,7 +121,7 @@ function collectTrackers(pathStack, data) {
     } else if (tagName == "null-container") {
       fd.append(name, track.getAttribute("null-element"));
     } else {
-      found = extract(track.querySelector("input"));
+      found = extract(name, track.querySelector("input"));
     }
     return found;
   }
@@ -130,7 +130,7 @@ function collectTrackers(pathStack, data) {
     let found = false;
     for (const element of pathStack) {
       const track = element.getAttribute("null-tracker") == name ? element : element.querySelector("[null-tracker=" + name + "]");
-      if (extract(track)) {
+      if (extract(name, track)) {
         found = true;
         break;
       }
