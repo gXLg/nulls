@@ -5,11 +5,17 @@ const cookieParser = require("cookie-parser");
 const cheerio = require("cheerio");
 const multer = require("multer");
 
+function parentRequire(mod) {
+  const f = require.main.path;
+  const m = require.resolve(mod, { "paths": [f] });
+  return require(m);
+}
+
 async function exec(code, block) {
   if (block) {
-    return await eval("(async require => {" + code + "})(require.main.require);");
+    return await eval("(async require => {" + code + "})(parentRequire);");
   } else {
-    return await eval("(async require => { return (" + code + "); })(require.main.require);");
+    return await eval("(async require => { return (" + code + "); })(parentRequire);");
   }
 }
 
@@ -20,7 +26,7 @@ async function handleAttrScript(element, name, def, server) {
     element.attr(name, null);
     if (attr[0] == "$") {
       const path = attr.slice(1);
-      return server ? require.main.require(path) : fs.readFileSync(path, "utf8");
+      return server ? parentRequire(path) : fs.readFileSync(path, "utf8");
     } else {
       return server ? (await exec(attr, false)) : attr.trim();
     }
