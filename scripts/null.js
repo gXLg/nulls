@@ -310,3 +310,16 @@ async function insertDummy(nul, element, anchor, after, path) {
   const p = path + "/" + nul + "." + element;
   handleNulls(p);
 }
+
+const cacheScripts = new Set();
+async function addScript(src, defer, asyn) {
+  if (cacheScripts.has(src)) return false;
+  const s = document.createElement("script");
+  s.src = src;
+  if (defer) s.defer = "";
+  if (asyn) s["async"] = "";
+  const p = new Promise(r => { s.onload = () => r(true); });
+  document.head.appendChild(s);
+  cacheScripts.add(src);
+  return p;
+}
