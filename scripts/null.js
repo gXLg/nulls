@@ -103,30 +103,37 @@ function collectTrackers(pathStack, data) {
   const fd = initTracker(window.location);
   if (!data.hasAttribute("null-tracks")) return fd;
   const trackers = data.getAttribute("null-tracks").split(/,[ ]*/);
+
+  function extract(track) {
+    if (track == null) return false;
+    const tagName = track.tagName.toLowerCase();
+    let found = true;
+    if (tagName == "null-data") {
+      fd.append(name, track.innerText.trim());
+    } else if (tagName == "textarea") {
+      fd.append(name, track.value);
+    } else if (tagName == "input" && track.type == "file") {
+      for (const file of track.files) {
+        fd.append(name, file);
+      }
+    } else if (tagName == "input" && (track.type == "text" || track.type == "password" || track.type == "hidden")) {
+      fd.append(name, track.value);
+    } else if (tagName == "null-container") {
+      fd.append(name, track.getAttribute("null-element"));
+    } else {
+      found = extract(track.querySelector("input"));
+    }
+    return found;
+  }
+
   for (const name of trackers) {
     let found = false;
     for (const element of pathStack) {
       const track = element.getAttribute("null-tracker") == name ? element : element.querySelector("[null-tracker=" + name + "]");
-      if (track == null) continue;
-      const tagName = track.tagName.toLowerCase();
-      found = true;
-      if (tagName == "null-data") {
-        fd.append(name, track.innerText.trim());
-      } else if (tagName == "textarea") {
-        fd.append(name, track.value);
-      } else if (tagName == "input" && track.type == "file") {
-        for (const file of track.files) {
-          fd.append(name, file);
-        }
-      } else if (tagName == "input" && track.type == "text" || track.type == "password") {
-        fd.append(name, track.value);
-      } else if (tagName == "null-container") {
-        fd.append(name, track.getAttribute("null-element"));
-      } else {
-        found = false;
-        continue;
+      if (extract(track)) {
+        found = true;
+        break;
       }
-      break;
     }
     if (!found) {
       console.error("Could not load tracker '" + name + "' for ", data);
