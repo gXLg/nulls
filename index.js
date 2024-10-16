@@ -95,11 +95,13 @@ module.exports = async (options = {}) => {
     const host = req.get("host");
     if (host != "localhost" && options.https && !req.secure)
       return res.redirect("https://" + host + req.url);
-    //await options.hook?.(req, res);
     next();
   });
 
-  const hook = options.hook ?? (() => {});
+  const hook = (req, res, next) => {
+    options.hook?.(req, res);
+    next();
+  };
 
   async function installNulls(fpath, path) {
     const all = fs.readdirSync(fpath, { "withFileTypes": true });
@@ -118,7 +120,7 @@ module.exports = async (options = {}) => {
           const provider = await handleProvider(l);
           const dummy = l.attr("null-dummy") != null;
           const upl = upload.fields(await handleUpload(l));
-          app.post("/null-container" + path + "/" + nul, upl, async (req, res) => {
+          app.post("/null-container" + path + "/" + nul, upl, hook, async (req, res) => {
             res.end(await provider(req, res));
           });
           if (dummy) {
@@ -137,11 +139,11 @@ module.exports = async (options = {}) => {
           const nul = l.attr("null");
           const validator = await handleValidator(l);
           const upl = upload.fields(await handleUpload(l));
-          app.post("/null-validator" + path + "/" + nul, upl, async (req, res) => {
+          app.post("/null-validator" + path + "/" + nul, upl, hook, async (req, res) => {
             res.end(await validator(req, res));
           });
           const processor = await handleProcessor(l);
-          app.post("/null-data" + path + "/" + nul, upl, async (req, res) => {
+          app.post("/null-data" + path + "/" + nul, upl, hook, async (req, res) => {
             res.json((await processor(req, res)) ?? {});
           });
           const parser = await handleParser(l);
@@ -155,7 +157,7 @@ module.exports = async (options = {}) => {
           const nul = l.attr("null");
           const processor = await handleProcessor(l);
           const upl = upload.fields(await handleUpload(l));
-          app.post("/null-request" + path + "/" + nul, upl, async (req, res) => {
+          app.post("/null-request" + path + "/" + nul, upl, hook, async (req, res) => {
             res.json((await processor(req, res)) ?? {});
           });
           const handler = await handleHandler(l);
@@ -169,7 +171,7 @@ module.exports = async (options = {}) => {
           const nul = l.attr("null");
           const loader = await handleLoader(l);
           const upl = upload.fields(await handleUpload(l));
-          app.post("/null-load" + path + "/" + nul, upl, async (req, res) => {
+          app.post("/null-load" + path + "/" + nul, upl, hook, async (req, res) => {
             res.end((await loader(req, res)).toString());
           });
         }
@@ -181,7 +183,7 @@ module.exports = async (options = {}) => {
       }
     }
   }
-  app.post("/null-container/root", upload.none(), (req, res) => { res.end("index"); });
+  app.post("/null-container/root", upload.none(), hook, (req, res) => { res.end("index"); });
   await installNulls(options.nulls ?? "./null", "");
 
   const nullJs = fs.readFileSync(__dirname + "/scripts/null.js");
@@ -200,7 +202,7 @@ module.exports = async (options = {}) => {
   });
   const skeleton = skelHtml.html();
 
-  app.get("*", (req, res) => {
+  app.get("*", hook, (req, res) => {
     if (options.seo) {
       const userAgent = req.headers["user-agent"];
       const crawlers = options.crawlers ?? /googlebot|bingbot|yahoo|duckduckbot|baiduspider|yandexbot|slurp|facebot|linkedinbot/i;
