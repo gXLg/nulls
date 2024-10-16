@@ -95,9 +95,11 @@ module.exports = async (options = {}) => {
     const host = req.get("host");
     if (host != "localhost" && options.https && !req.secure)
       return res.redirect("https://" + host + req.url);
-    await options.hook?.(req, res);
+    //await options.hook?.(req, res);
     next();
   });
+
+  const hook = options.hook ?? (() => {});
 
   async function installNulls(fpath, path) {
     const all = fs.readdirSync(fpath, { "withFileTypes": true });
@@ -193,7 +195,7 @@ module.exports = async (options = {}) => {
   const skeletonRaw = fs.readFileSync(options.skeleton ?? static + "/skeleton.html");
   const skelHtml = cheerio.load(skeletonRaw);
   const title = await handleTitle(skelHtml("head"));
-  app.post("/null-title", upload.none(), async (req, res) => {
+  app.post("/null-title", upload.none(), hook, async (req, res) => {
     res.end(await title(req, res));
   });
   const skeleton = skelHtml.html();
