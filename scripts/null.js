@@ -192,9 +192,10 @@ async function handleNulls(p = "root", force = false) {
   const tracker = collectTrackers(pathStack, element);
 
   const type = await request("/null-container/" + path, tracker);
+  const fpath = type.includes("/") ? path + "/" + type.split("/").slice(0, -1).join("/") : path;
   if (currentTypes[p] != type || force) {
     currentTypes[p] = type;
-    setContainer(element, await getNull(path, type));
+    setContainer(element, await getNull(fpath, type));
     // remove cached types of sub containers (since they are gone)
     for (const pp in currentTypes) {
       if (pp.startsWith(p) && pp != p) {
@@ -203,13 +204,13 @@ async function handleNulls(p = "root", force = false) {
     }
     for (const data of element.querySelectorAll("null-data:not([null-refresh])")) {
       const tracker = collectTrackers(pathStack, data);
-      await handleData(data, path, tracker, force);
+      await handleData(data, fpath, tracker, force);
     }
   }
   for (const data of element.querySelectorAll("null-data[null-refresh]")) {
     if (data.closest("null-container") != element) continue;
     const tracker = collectTrackers(pathStack, data);
-    await handleData(data, path, tracker, force);
+    await handleData(data, fpath, tracker, force);
   }
   element.classList.remove("null-awaiting");
 
@@ -221,7 +222,7 @@ async function handleNulls(p = "root", force = false) {
       for (const e of es) {
         if (e.intersectionRatio > 0) {
           obs.disconnect();
-          handleNulls(path + "/" + nul, force);
+          handleNulls(fpath + "/" + nul, force);
           return;
         }
       }
@@ -242,7 +243,7 @@ async function handleNulls(p = "root", force = false) {
     req.onclick = async event => {
       event.preventDefault();
       const tracker = collectTrackers(pathStack, req);
-      handleRequest(path + "/" + nul, tracker);
+      handleRequest(fpath + "/" + nul, tracker);
     };
   }
 
@@ -257,9 +258,9 @@ async function handleNulls(p = "root", force = false) {
           if (e.intersectionRatio > 0) {
             obs.disconnect();
             const tracker = collectTrackers(pathStack, loader);
-            const index = await handleLoader(path + "/" + nul, tracker, loader);
+            const index = await handleLoader(fpath + "/" + nul, tracker, loader);
             if (index != "") {
-              await insertDummy(loads, index, loader, after, path);
+              await insertDummy(loads, index, loader, after, fpath);
               listen();
             }
             return;
