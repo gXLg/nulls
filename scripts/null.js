@@ -116,7 +116,7 @@ function collectTrackers(pathStack, data) {
       for (const file of track.files) {
         fd.append(name, file);
       }
-    } else if (tagName == "input" && (track.type == "text" || track.type == "password" || track.type == "hidden")) {
+    } else if (tagName == "input") {
       fd.append(name, track.value);
     } else if (tagName == "null-container") {
       fd.append(name, track.getAttribute("null-element"));
