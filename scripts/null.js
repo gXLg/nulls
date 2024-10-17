@@ -195,7 +195,7 @@ async function handleNulls(p = "root", force = false) {
   const fpath = type.includes("/") ? path + "/" + type.split("/").slice(0, -1).join("/") : path;
   if (currentTypes[p] != type || force) {
     currentTypes[p] = type;
-    setContainer(element, await getNull(fpath, type));
+    setContainer(element, await getNull(path, type));
     // remove cached types of sub containers (since they are gone)
     for (const pp in currentTypes) {
       if (pp.startsWith(p) && pp != p) {
