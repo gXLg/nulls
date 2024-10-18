@@ -98,8 +98,8 @@ module.exports = async (options = {}) => {
     next();
   });
 
-  const hook = (req, res, next) => {
-    options.hook?.(req, res);
+  const hook = async (req, res, next) => {
+    await options.hook?.(req, res);
     if (req.body == null) {
       res.status(400);
       res.end("No body provided");
