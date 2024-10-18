@@ -278,7 +278,8 @@ async function getTitle(link) {
   return title;
 }
 
-async function navigate(link) {
+async function navigate(l) {
+  const link = l.href ? l : { "href": l, "pathname": l, "search": "" };
   const title = await getTitle(link);
   window.history.pushState({ title }, "", link.href);
   document.title = title;
