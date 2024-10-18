@@ -204,7 +204,7 @@ module.exports = async (options = {}) => {
   });
   const skeleton = skelHtml.html();
 
-  app.get("*", hook, (req, res) => {
+  app.get("*", (req, res) => {
     if (options.seo) {
       const userAgent = req.headers["user-agent"];
       const crawlers = options.crawlers ?? /googlebot|bingbot|yahoo|duckduckbot|baiduspider|yandexbot|slurp|facebot|linkedinbot/i;
