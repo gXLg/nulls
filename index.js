@@ -100,9 +100,10 @@ module.exports = async (options = {}) => {
 
   const hook = (req, res, next) => {
     options.hook?.(req, res);
-    if (req.body != null) next();
-    res.status(400);
-    res.end("No body provided");
+    if (req.body == null) {
+      res.status(400);
+      res.end("No body provided");
+    } else next();
   };
 
   async function installNulls(fpath, path) {
