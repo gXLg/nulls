@@ -1,6 +1,8 @@
-const express = require("express");
 const http = require("http");
 const fs = require("fs");
+const crypto = require("crypto");
+
+const express = require("express");
 const cookieParser = require("cookie-parser");
 const cheerio = require("cheerio");
 const multer = require("multer");
@@ -79,6 +81,18 @@ async function handleTitle(element) {
   return await handleAttrScript(element, "null-title", () => "", true);
 }
 
+function cache(mtime, size) {
+  return (req, res, next) => {
+    const etag = crypto.hash("md5", mtime.toISOString() + size);
+    res.set("ETag", etag);
+    if (req.headers["if-none-match"] == etag)
+      res.sendStatus(304);
+    else {
+      res.set("Cache-Control", "public, max-age=86400");
+      next();
+    }
+  };
+}
 
 module.exports = async (options = {}) => {
   const upload = multer({ "dest": options.uploads ?? "./uploads/" });
@@ -113,6 +127,7 @@ module.exports = async (options = {}) => {
       if (entry.isDirectory()) {
         await installNulls(fpath + "/" + name, path + "/" + name);
       } else if (name.endsWith(".html")) {
+        const { mtime, size } = fs.statSync(fpath + "/" + name);
         const file = fs.readFileSync(fpath + "/" + name, "utf8");
         const html = cheerio.load(file);
 
@@ -129,7 +144,8 @@ module.exports = async (options = {}) => {
           if (dummy) {
             l.attr("null-dummy", null);
             const h = l.prop("outerHTML");
-            app.get("/static/dummies" + path + "/" + nul + ".html", (req, res) => {
+            app.get("/static/dummies" + path + "/" + nul + ".html", cache(mtime, size), (req, res) => {
+              res.type("html");
               res.end(h);
             });
             dummies.push(l);
@@ -150,7 +166,8 @@ module.exports = async (options = {}) => {
             res.json((await processor(req, res)) ?? {});
           });
           const parser = await handleParser(l);
-          app.get("/static/parsers" + path + "/" + nul + ".js", (req, res) => {
+          app.get("/static/parsers" + path + "/" + nul + ".js", cache(mtime, size), (req, res) => {
+            res.type("js");
             res.end(parser);
           });
         }
@@ -164,7 +181,8 @@ module.exports = async (options = {}) => {
             res.json((await processor(req, res)) ?? {});
           });
           const handler = await handleHandler(l);
-          app.get("/static/handlers" + path + "/" + nul + ".js", (req, res) => {
+          app.get("/static/handlers" + path + "/" + nul + ".js", cache(mtime, size), (req, res) => {
+            res.type("js");
             res.end(handler);
           });
         }
@@ -180,7 +198,8 @@ module.exports = async (options = {}) => {
         }
 
         const fin = html("body").html();
-        app.get("/static/nulls" + path + "/" + name, (req, res) => {
+        app.get("/static/nulls" + path + "/" + name, cache(mtime, size), (req, res) => {
+          res.type("html");
           res.end(fin);
         });
       }
@@ -189,10 +208,10 @@ module.exports = async (options = {}) => {
   app.post("/null-container/root", upload.none(), hook, (req, res) => { res.end("index"); });
   await installNulls(options.nulls ?? "./null", "");
 
-  const nullJs = fs.readFileSync(__dirname + "/scripts/null.js");
-  app.get("/static/null.js", (req, res) => {
-    res.setHeader("Content-Type", "text/javascript");
-    res.end(nullJs);
+  const nullJs = __dirname + "/scripts/null.js";
+  const { mtime, size } = fs.statSync(nullJs);
+  app.get("/static/null.js", cache(mtime, size), (req, res) => {
+    res.sendFile(nullJs);
   });
   const static = options.static ?? "./files";
   app.use("/static", express.static(static));
