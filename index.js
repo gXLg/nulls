@@ -81,9 +81,10 @@ async function handleTitle(element) {
   return await handleAttrScript(element, "null-title", () => "", true);
 }
 
-function cache(mtime, size) {
+const hash = (mtime, size) => crypto.hash("md5", mtime.toISOString() + size);
+
+function cache(etag) {
   return (req, res, next) => {
-    const etag = crypto.hash("md5", mtime.toISOString() + size);
     res.set("ETag", etag);
     if (req.headers["if-none-match"] == etag)
       res.sendStatus(304);
@@ -128,6 +129,8 @@ module.exports = async (options = {}) => {
         await installNulls(fpath + "/" + name, path + "/" + name);
       } else if (name.endsWith(".html")) {
         const { mtime, size } = fs.statSync(fpath + "/" + name);
+        const etag = hash(mtime, size);
+
         const file = fs.readFileSync(fpath + "/" + name, "utf8");
         const html = cheerio.load(file);
 
@@ -144,7 +147,7 @@ module.exports = async (options = {}) => {
           if (dummy) {
             l.attr("null-dummy", null);
             const h = l.prop("outerHTML");
-            app.get("/static/dummies" + path + "/" + nul + ".html", cache(mtime, size), (req, res) => {
+            app.get("/static/dummies" + path + "/" + nul + ".html", cache(etag), (req, res) => {
               res.type("html");
               res.end(h);
             });
@@ -166,7 +169,7 @@ module.exports = async (options = {}) => {
             res.json((await processor(req, res)) ?? {});
           });
           const parser = await handleParser(l);
-          app.get("/static/parsers" + path + "/" + nul + ".js", cache(mtime, size), (req, res) => {
+          app.get("/static/parsers" + path + "/" + nul + ".js", cache(etag), (req, res) => {
             res.type("js");
             res.end(parser);
           });
@@ -181,7 +184,7 @@ module.exports = async (options = {}) => {
             res.json((await processor(req, res)) ?? {});
           });
           const handler = await handleHandler(l);
-          app.get("/static/handlers" + path + "/" + nul + ".js", cache(mtime, size), (req, res) => {
+          app.get("/static/handlers" + path + "/" + nul + ".js", cache(etag), (req, res) => {
             res.type("js");
             res.end(handler);
           });
@@ -198,7 +201,7 @@ module.exports = async (options = {}) => {
         }
 
         const fin = html("body").html();
-        app.get("/static/nulls" + path + "/" + name, cache(mtime, size), (req, res) => {
+        app.get("/static/nulls" + path + "/" + name, cache(etag), (req, res) => {
           res.type("html");
           res.end(fin);
         });
@@ -210,7 +213,8 @@ module.exports = async (options = {}) => {
 
   const nullJs = __dirname + "/scripts/null.js";
   const { mtime, size } = fs.statSync(nullJs);
-  app.get("/static/null.js", cache(mtime, size), (req, res) => {
+  const etag = hash(mtime, size);
+  app.get("/static/null.js", cache(etag), (req, res) => {
     res.sendFile(nullJs);
   });
   const static = options.static ?? "./files";
