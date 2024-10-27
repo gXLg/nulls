@@ -149,7 +149,7 @@ async function handleData(data, ppath, tracker, force) {
   const path = ppath + "/" + nul;
   if (data.hasAttribute("null-cache")) {
     const hash = await request("/null-validator/" + path, tracker);
-    if (!(hash in cache)) {
+    if (!(hash in cache) || force) {
       const html = await getData(path, tracker);
       cache[hash] = html;
     }
