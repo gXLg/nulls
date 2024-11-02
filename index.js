@@ -132,7 +132,7 @@ module.exports = async (options = {}) => {
         const etag = hash(mtime, size);
 
         const file = fs.readFileSync(fpath + "/" + name, "utf8");
-        const html = cheerio.load(file);
+        const html = cheerio.load("<body>" + file + "</body>");
 
         const dummies = [];
         for (let i = 0; i < html("null-container").length; i ++) {
