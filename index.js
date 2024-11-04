@@ -81,7 +81,7 @@ async function handleTitle(element) {
   return await handleAttrScript(element, "null-title", () => "", true);
 }
 
-const hash = (mtime, size) => crypto.hash("md5", mtime.toISOString() + size);
+const hash = (mtime, size) => crypto.createHash("md5").update(mtime.toISOString() + size).digest("hex");
 
 function cache(etag) {
   return (req, res, next) => {
