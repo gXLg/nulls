@@ -89,7 +89,7 @@ function cache(etag) {
     if (req.headers["if-none-match"] == etag)
       res.sendStatus(304);
     else {
-      res.set("Cache-Control", "public, max-age=86400");
+      res.set("Cache-Control", "max-age=86400, no-cache");
       next();
     }
   };
@@ -231,7 +231,7 @@ module.exports = async (options = {}) => {
   app.get("*", (req, res) => {
     if (options.seo) {
       const userAgent = req.headers["user-agent"];
-      const crawlers = options.crawlers ?? /googlebot|bingbot|yahoo|duckduckbot|baiduspider|yandexbot|slurp|facebot|linkedinbot/i;
+      const crawlers = options.crawlers ?? /googlebot|bingbot|yahoo|duckduckbot|baiduspider|yandexbot|slurp|facebot|linkedinbot|discordbot|curl|whatsapp|twitterbot|telegrambot/i;
       if (crawlers.test(userAgent)) {
         const html = cheerio.load(skeleton);
         const seo = options.seo(req, res);
