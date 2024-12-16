@@ -288,6 +288,7 @@ async function nulls(opt = { }) {
         if (id in tags[file]) {
           const [n, v] = await tags[file][id](...args);
           element.attr(n, v);
+          found = true;
         }
         if (!found) {
           throw new NullsArgumentError(
