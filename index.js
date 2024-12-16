@@ -61,13 +61,13 @@ async function handleAttrScript(element, name) {
 async function nulls(opt = { }) {
   // validate arguments
   const args = [
-    ["uploads", "./uploads/"],
+    ["uploads", "./uploads/", false],
     ["forceHttps", false],
     ["init", () => {}, async () => {}],
     ["hook", () => {}, async () => {}],
     ["nulls", "./nulls/"],
     ["root", "root.html"],
-    ["static", "./static/"],
+    ["static", "./static/", false],
     ["port", 8080],
     ["ready", () => {}, async () => {}]
   ];
@@ -75,11 +75,13 @@ async function nulls(opt = { }) {
   const options = { };
   for (const [name, ...def] of args) {
     const value = opt[name];
-    let valid = false;
-    for (const d of def) {
-      if (value == null || value.constructor == d.constructor) {
-        valid = true;
-        break;
+    let valid = value == null;
+    if (!valid) {
+      for (const d of def) {
+        if (value.constructor == d.constructor) {
+          valid = true;
+          break;
+        }
       }
     }
     if (!valid) {
@@ -211,6 +213,12 @@ async function nulls(opt = { }) {
         );
       }
       const u = [];
+      if (l.attr("null-upload") && !options.uploads) {
+        throw new NullsArgumentError(
+          "API #" + i + " at " + file +
+          " provides upload although the upload was disabled"
+        );
+      }
       const up = (await handleAttrScript(l, "null-upload")) ?? { };
       for (const name in up) {
         u.push({ name, "maxCount": r[name] });
@@ -229,7 +237,7 @@ async function nulls(opt = { }) {
     htmls[file] = html.html();
   }
 
-  app.use("/static", express.static(options.static));
+  if (options.static) app.use("/static", express.static(options.static));
 
   app.get("*", async (req, res) => {
 
