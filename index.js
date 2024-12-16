@@ -1,11 +1,24 @@
 const http = require("http");
 const fs = require("fs");
-const crypto = require("crypto");
+const { randomUUID } = require("crypto");
+const { join } = require("path");
 
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cheerio = require("cheerio");
 const multer = require("multer");
+
+class NullBaseError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+class NullsPathError extends NullBaseError {}
+class NullsArgumentError extends NullBaseError {}
+class NullsScriptError extends NullBaseError {}
 
 function parentRequire(mod) {
   const f = require.main.path;
@@ -21,16 +34,16 @@ async function exec(code, block) {
   }
 }
 
-async function handleAttrScript(element, name, def, server) {
+async function handleAttrScript(element, name) {
   // first try attribute
   const attr = element.attr(name);
+  element.attr(name, null);
   if (attr) {
-    element.attr(name, null);
     if (attr[0] == "$") {
       const path = attr.slice(1);
-      return server ? parentRequire(path) : fs.readFileSync(path, "utf8");
+      return parentRequire(path);
     } else {
-      return server ? (await exec(attr, false)) : attr.trim();
+      return await exec(attr, false);
     }
   }
   // then try script
@@ -38,210 +51,248 @@ async function handleAttrScript(element, name, def, server) {
   const script = s.text();
   if (script != "") {
     s.remove();
-    return server ? (await exec(script, true)) : "(async () => {" + script.trim() + "})();";
+    return await exec(script, true);
   }
-
-  // finally just return default
-  return def;
+  // finally, just return null
+  return null;
 }
 
-async function handleProvider(element) {
-  return await handleAttrScript(element, "null-provider", () => "index", true);
-}
 
-async function handleUpload(element) {
-  const u = [];
-  const r = await handleAttrScript(element, "null-upload", { }, true);
-  for (const name in r) {
-    u.push({ name, "maxCount": r[name] });
-  }
-  return u;
-}
+async function nulls(opt = { }) {
+  // validate arguments
+  const args = [
+    ["uploads", "./uploads/"],
+    ["forceHttps", false],
+    ["init", () => {}, async () => {}],
+    ["hook", () => {}, async () => {}],
+    ["nulls", "./nulls/"],
+    ["root", "root.html"],
+    ["static", "./static/"],
+    ["port", 8080],
+    ["ready", () => {}, async () => {}]
+  ];
 
-async function handleParser(element) {
-  return await handleAttrScript(element, "null-parser", "r=>r", false);
-}
-
-async function handleProcessor(element) {
-  return await handleAttrScript(element, "null-processor", () => null, true);
-}
-
-async function handleHandler(element) {
-  return await handleAttrScript(element, "null-handler", "()=>{}", false);
-}
-
-async function handleLoader(element) {
-  return await handleAttrScript(element, "null-loader", () => "", true);
-}
-
-async function handleValidator(element) {
-  return await handleAttrScript(element, "null-validator", () => "", true);
-}
-async function handleTitle(element) {
-  return await handleAttrScript(element, "null-title", () => "", true);
-}
-
-const hash = (mtime, size) => crypto.createHash("md5").update(mtime.toISOString() + size).digest("hex");
-
-function cache(etag) {
-  return (req, res, next) => {
-    res.set("ETag", etag);
-    if (req.headers["if-none-match"] == etag)
-      res.sendStatus(304);
-    else {
-      res.set("Cache-Control", "max-age=86400, no-cache");
-      next();
+  const options = { };
+  for (const [name, ...def] of args) {
+    const value = opt[name];
+    let valid = false;
+    for (const d of def) {
+      if (value == null || value.constructor == d.constructor) {
+        valid = true;
+        break;
+      }
     }
-  };
-}
+    if (!valid) {
+      throw new NullsArgumentError(
+        "Argument '" + name + "' has a wrong type! Expected one of: " +
+        def.map(d => d.constructor.name).join(", ")
+      );
+    }
+    options[name] = value ?? def[0];
+  }
 
-module.exports = async (options = {}) => {
-  const upload = multer({ "dest": options.uploads ?? "./uploads/" });
+
+  const upload = multer({ "dest": options.uploads });
   const app = express();
   const server = http.createServer(app);
-
-  await options.init?.(app, server);
-
+  await options.init(app, server);
   app.use(cookieParser());
-  if (options.https) {
-    app.enable("trust proxy");
-  }
+  if (options.forceHttps) app.enable("trust proxy");
   app.use(async (req, res, next) => {
     const host = req.get("host");
-    if (host != "localhost" && options.https && !req.secure)
+    if (host != "localhost" && options.forceHttps && !req.secure)
       return res.redirect("https://" + host + req.url);
+    await options.hook(req, res);
     next();
   });
 
-  const hook = async (req, res, next) => {
-    await options.hook?.(req, res);
-    if (req.body == null) {
-      res.status(400);
-      res.end("No body provided");
-    } else next();
-  };
-
-  async function installNulls(fpath, path) {
-    const all = fs.readdirSync(fpath, { "withFileTypes": true });
-    for (const entry of all) {
-      const name = entry.name;
-      if (entry.isDirectory()) {
-        await installNulls(fpath + "/" + name, path + "/" + name);
-      } else if (name.endsWith(".html")) {
-        const { mtime, size } = fs.statSync(fpath + "/" + name);
-        const etag = hash(mtime, size);
-
-        const file = fs.readFileSync(fpath + "/" + name, "utf8");
-        const html = cheerio.load("<body>" + file + "</body>");
-
-        const dummies = [];
-        for (let i = 0; i < html("null-container").length; i ++) {
-          const l = html("null-container:eq(" + i + ")");
-          const nul = l.attr("null");
-          const provider = await handleProvider(l);
-          const dummy = l.attr("null-dummy") != null;
-          const upl = upload.fields(await handleUpload(l));
-          app.post("/null-container" + path + "/" + nul, upl, hook, async (req, res) => {
-            res.end(await provider(req, res));
-          });
-          if (dummy) {
-            l.attr("null-dummy", null);
-            const h = l.prop("outerHTML");
-            app.get("/static/dummies" + path + "/" + nul + ".html", cache(etag), (req, res) => {
-              res.type("html");
-              res.end(h);
-            });
-            dummies.push(l);
-          }
-        }
-        dummies.forEach(d => d.remove());
-
-        for (let i = 0; i < html("null-data").length; i ++) {
-          const l = html("null-data:eq(" + i + ")");
-          const nul = l.attr("null");
-          const validator = await handleValidator(l);
-          const upl = upload.fields(await handleUpload(l));
-          app.post("/null-validator" + path + "/" + nul, upl, hook, async (req, res) => {
-            res.end(await validator(req, res));
-          });
-          const processor = await handleProcessor(l);
-          app.post("/null-data" + path + "/" + nul, upl, hook, async (req, res) => {
-            res.json((await processor(req, res)) ?? {});
-          });
-          const parser = await handleParser(l);
-          app.get("/static/parsers" + path + "/" + nul + ".js", cache(etag), (req, res) => {
-            res.type("js");
-            res.end(parser);
-          });
-        }
-
-        for (let i = 0; i < html("null-request").length; i ++) {
-          const l = html("null-request:eq(" + i + ")");
-          const nul = l.attr("null");
-          const processor = await handleProcessor(l);
-          const upl = upload.fields(await handleUpload(l));
-          app.post("/null-request" + path + "/" + nul, upl, hook, async (req, res) => {
-            res.json((await processor(req, res)) ?? {});
-          });
-          const handler = await handleHandler(l);
-          app.get("/static/handlers" + path + "/" + nul + ".js", cache(etag), (req, res) => {
-            res.type("js");
-            res.end(handler);
-          });
-        }
-
-        for (let i = 0; i < html("null-loader").length; i ++) {
-          const l = html("null-loader:eq(" + i + ")");
-          const nul = l.attr("null");
-          const loader = await handleLoader(l);
-          const upl = upload.fields(await handleUpload(l));
-          app.post("/null-load" + path + "/" + nul, upl, hook, async (req, res) => {
-            res.end((await loader(req, res)).toString());
-          });
-        }
-
-        const fin = html("body").html();
-        app.get("/static/nulls" + path + "/" + name, cache(etag), (req, res) => {
-          res.type("html");
-          res.end(fin);
-        });
-      }
+  const paths = new Set();
+  const open = [options.nulls];
+  while (open.length) {
+    const current = open.shift();
+    for (const entry of fs.readdirSync(current, { "withFileTypes": true })) {
+      const fullPath = join(entry.path, entry.name);
+      if (entry.isDirectory()) open.push(fullPath);
+      else if (fullPath.endsWith(".html")) paths.add(fullPath);
     }
   }
-  app.post("/null-container/root", upload.none(), hook, (req, res) => { res.end("index"); });
-  await installNulls(options.nulls ?? "./null", "");
 
-  const nullJs = __dirname + "/scripts/null.js";
-  const { mtime, size } = fs.statSync(nullJs);
-  const etag = hash(mtime, size);
-  app.get("/static/null.js", cache(etag), (req, res) => {
-    res.sendFile(nullJs);
-  });
-  const static = options.static ?? "./files";
-  app.use("/static", express.static(static));
+  const root = join(options.nulls, options.root);
+  if (!paths.has(root)) {
+    throw new NullsPathError(
+      "The root container '" + options.root +
+      "' was not found under the specified location '" + options.nulls + "'"
+    );
+  }
 
-  const skeletonRaw = fs.readFileSync(options.skeleton ?? static + "/skeleton.html");
-  const skelHtml = cheerio.load(skeletonRaw);
-  const title = await handleTitle(skelHtml("head"));
-  app.post("/null-title", upload.none(), hook, async (req, res) => {
-    res.end(await title(req, res));
-  });
-  const skeleton = skelHtml.html();
+  const containers = {};
+  const lists = {};
+  const adders = {};
+  const datas = {};
+  const tags = {};
 
-  app.get("*", (req, res) => {
-    if (options.seo) {
-      const userAgent = req.headers["user-agent"];
-      const crawlers = options.crawlers ?? /googlebot|bingbot|yahoo|duckduckbot|baiduspider|yandexbot|slurp|facebot|linkedinbot|discordbot|curl|whatsapp|twitterbot|telegrambot/i;
-      if (crawlers.test(userAgent)) {
-        const html = cheerio.load(skeleton);
-        const seo = options.seo(req, res);
-        html("head").append(seo);
-        res.end(html.html());
-        return;
+  const htmls = {};
+
+  for (const file of paths) {
+    const content = fs.readFileSync(file, "utf8");
+    const html = file == root ? cheerio.load(content) : cheerio.load(content, null, false);
+
+    const cont = html("[null-container]");
+    containers[file] = {};
+    lists[file] = {};
+    for (let i = 0; i < cont.length; i++) {
+      const l = cont.eq(i);
+      const script = await handleAttrScript(l, "null-container");
+      if (script == null) {
+        throw new NullsArgumentError(
+          "Container #" + i + " at " + file + " does not provide a script"
+        );
       }
+      const lscript = await handleAttrScript(l, "null-list");
+
+      const id = l.attr("null-id") ?? randomUUID();
+      l.attr("null-id", id);
+      containers[file][id] = script;
+      if (lscript != null) lists[file][id] = lscript;
     }
-    res.end(skeleton);
+
+    const add = html("[null-adder]");
+    adders[file] = {};
+    for (let i = 0; i < add.length; i++) {
+      const l = add.eq(i);
+      const script = await handleAttrScript(l, "null-adder");
+      if (script == null) {
+        throw new NullsArgumentError(
+          "Adder #" + i + " at " + file + " does not provide a script"
+        );
+      }
+      const id = l.attr("null-id") ?? randomUUID();
+      l.attr("null-id", id);
+      adders[file][id] = script;
+    }
+
+    const data = html("[null-data]");
+    datas[file] = {};
+    for (let i = 0; i < data.length; i++) {
+      const l = data.eq(i);
+      const script = await handleAttrScript(l, "null-data");
+      if (script == null) {
+        throw new NullsArgumentError(
+          "Data #" + i + " at " + file + " does not provide a script"
+        );
+      }
+      const id = l.attr("null-id") ?? randomUUID();
+      l.attr("null-id", id);
+      datas[file][id] = script;
+    }
+
+    const tag = html("[null-tag]");
+    tags[file] = {};
+    for (let i = 0; i < tag.length; i++) {
+      const l = tag.eq(i);
+      const script = await handleAttrScript(l, "null-tag");
+      if (script == null) {
+        throw new NullsArgumentError(
+          "Tagger #" + i + " at " + file + " does not provide a script"
+        );
+      }
+      const id = l.attr("null-id") ?? randomUUID();
+      l.attr("null-id", id);
+      tags[file][id] = script;
+    }
+
+    const api = html("form[null-api]");
+    for (let i = 0; i < api.length; i++) {
+      const l = api.eq(i);
+      const script = await handleAttrScript(l, "null-api");
+      if (script == null) {
+        throw new NullsArgumentError(
+          "API #" + i + " at " + file + " does not provide a script"
+        );
+      }
+      const u = [];
+      const up = (await handleAttrScript(l, "null-upload")) ?? { };
+      for (const name in up) {
+        u.push({ name, "maxCount": r[name] });
+      }
+      l.attr("enctype", "multipart/form-data");
+
+      const action = l.attr("action");
+      if (action == null) {
+        throw new NullsArgumentError(
+          "API #" + i + " at " + file + " does not provide an action"
+        );
+      }
+      app.post(action, upload.fields(u), script);
+    }
+
+    htmls[file] = html.html();
+  }
+
+  app.use("/static", express.static(options.static));
+
+  app.get("*", async (req, res) => {
+
+    async function render(partf, ...args) {
+      const file = join(options.nulls, partf);
+      if (!(file in htmls)) {
+        throw new NullsPathError(
+          "Expected to render '" + file +
+          "', but it was not found"
+        );
+      }
+      const html = file == root ? cheerio.load(htmls[file]) : cheerio.load(htmls[file], null, false);
+      const nulls = html("[null-id]");
+      for (let i = 0; i < nulls.length; i++) {
+        const element = nulls.eq(i);
+        const id = element.attr("null-id");
+        let found = false;
+        if (id in containers[file]) {
+          if (id in lists[file]) {
+            element.html("");
+            const l = await lists[file][id](...args);
+            if (!(Symbol.iterator in Object(l))) {
+              throw new NullsScriptError(
+                "List #" + i + " at " + file + " is not iterable!"
+              );
+            }
+            for (const el of l) {
+              const c = await containers[file][id](...args, el);
+              element.append(await render(c, ...args, el));
+            }
+          } else {
+            const c = await containers[file][id](...args);
+            element.html(await render(c, ...args));
+          }
+          found = true;
+        }
+        if (id in adders[file]) {
+          const c = await adders[file][id](...args);
+          element.append(await render(c, ...args));
+          found = true;
+        }
+        if (id in datas[file]) {
+          const d = await datas[file][id](...args);
+          element.html(d);
+          found = true;
+        }
+        if (id in tags[file]) {
+          const [n, v] = await tags[file][id](...args);
+          element.attr(n, v);
+        }
+        if (!found) {
+          throw new NullsArgumentError(
+            "Manually provided invalid null-id #" + i +
+            " at " + file
+          );
+        }
+      }
+      return html.html();
+    }
+    res.end(await render(options.root, req, res));
   });
 
-  server.listen(options.port ?? 8080, () => options.ready?.());
-};
+  server.listen(options.port, () => options.ready());
+}
+
+module.exports = { nulls, NullsPathError, NullsArgumentError, NullsScriptError };
