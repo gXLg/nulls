@@ -21,8 +21,9 @@ class NullsArgumentError extends NullBaseError {}
 class NullsScriptError extends NullBaseError {}
 
 function parentRequire(mod) {
+  const p = "./" + mod;
   const f = require.main.path;
-  const m = require.resolve(mod, { "paths": [f] });
+  const m = require.resolve(p, { "paths": [f] });
   return require(m);
 }
 
