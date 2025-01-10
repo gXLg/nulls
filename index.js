@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const { randomUUID } = require("crypto");
 const { join } = require("path");
+const { optparser } = require("gxlg-utils");
 
 const express = require("express");
 const cookieParser = require("cookie-parser");
@@ -19,6 +20,18 @@ class NullBaseError extends Error {
 class NullsPathError extends NullBaseError {}
 class NullsArgumentError extends NullBaseError {}
 class NullsScriptError extends NullBaseError {}
+
+const parser = optparser([
+  { "name": "uploads",    "types": ["./uploads/", false] },
+  { "name": "forceHttps", "types": [false] },
+  { "name": "init",       "types": [() => {}, async () => {}] },
+  { "name": "hook",       "types": [() => {}, async () => {}] },
+  { "name": "nulls",      "types": ["./nulls/"] },
+  { "name": "root",       "types": ["root.html"] },
+  { "name": "static",     "types": ["./static/", false] },
+  { "name": "port",       "types": [8080] },
+  { "name": "ready",      "types": [() => {}, async () => {}] }
+], NullsArgumentError);
 
 function parentRequire(mod) {
   const p = "./" + mod;
@@ -59,41 +72,9 @@ async function handleAttrScript(element, name) {
 }
 
 
-async function nulls(opt = { }) {
-  // validate arguments
-  const args = [
-    ["uploads", "./uploads/", false],
-    ["forceHttps", false],
-    ["init", () => {}, async () => {}],
-    ["hook", () => {}, async () => {}],
-    ["nulls", "./nulls/"],
-    ["root", "root.html"],
-    ["static", "./static/", false],
-    ["port", 8080],
-    ["ready", () => {}, async () => {}]
-  ];
 
-  const options = { };
-  for (const [name, ...def] of args) {
-    const value = opt[name];
-    let valid = value == null;
-    if (!valid) {
-      for (const d of def) {
-        if (value.constructor == d.constructor) {
-          valid = true;
-          break;
-        }
-      }
-    }
-    if (!valid) {
-      throw new NullsArgumentError(
-        "Argument '" + name + "' has a wrong type! Expected one of: " +
-        def.map(d => d.constructor.name).join(", ")
-      );
-    }
-    options[name] = value ?? def[0];
-  }
-
+async function nulls(opt = {}) {
+  const options = parser(opt);
 
   const upload = multer({ "dest": options.uploads });
   const app = express();
