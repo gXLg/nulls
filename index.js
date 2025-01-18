@@ -236,6 +236,7 @@ async function nulls(opt = {}) {
       for (let i = 0; i < nulls.length; i++) {
         const element = nulls.eq(i);
         const id = element.attr("null-id");
+        element.attr("null-id", null);
         let found = false;
         if (id in containers[file]) {
           if (id in lists[file]) {
