@@ -206,6 +206,7 @@ async function nulls(opt = {}) {
         u.push({ name, "maxCount": r[name] });
       }
       l.attr("enctype", "multipart/form-data");
+      l.attr("method", "POST");
 
       const action = l.attr("action");
       if (action == null) {
