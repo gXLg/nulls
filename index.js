@@ -283,7 +283,7 @@ async function nulls(opt = {}) {
     res.end(await render(options.root, req, res));
   });
 
-  app.listen(options.port, () => options.ready());
+  return app.listen(options.port, () => options.ready());
 }
 
 module.exports = { nulls, NullsPathError, NullsArgumentError, NullsScriptError };
