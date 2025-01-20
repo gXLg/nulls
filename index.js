@@ -21,15 +21,16 @@ class NullsArgumentError extends NullBaseError {}
 class NullsScriptError extends NullBaseError {}
 
 const parser = optparser([
-  { "name": "uploads",    "types": ["./uploads/", false] },
-  { "name": "forceHttps", "types": [false] },
+  { "name": "uploads",    "types": ["./uploads/", false]      },
+  { "name": "forceHttps", "types": [false]                    },
   { "name": "init",       "types": [() => {}, async () => {}] },
   { "name": "hook",       "types": [() => {}, async () => {}] },
-  { "name": "nulls",      "types": ["./nulls/"] },
-  { "name": "root",       "types": ["root.html"] },
-  { "name": "static",     "types": ["./static/", false] },
-  { "name": "port",       "types": [8080] },
-  { "name": "ready",      "types": [() => {}, async () => {}] }
+  { "name": "nulls",      "types": ["./nulls/"]               },
+  { "name": "root",       "types": ["root.html"]              },
+  { "name": "static",     "types": ["./static/", false]       },
+  { "name": "port",       "types": [8080]                     },
+  { "name": "ready",      "types": [() => {}, async () => {}] },
+  { "name": "emptyPOST",  "types": [false]                    }
 ], NullsArgumentError);
 
 function parentRequire(mod) {
@@ -84,6 +85,12 @@ async function nulls(opt = {}) {
     const host = req.get("host");
     if (host != "localhost" && options.forceHttps && !req.secure)
       return res.redirect("https://" + host + req.url);
+
+    if (req.method == "POST" && !options.emptyPOST && req.body == null) {
+      res.status(400);
+      return res.end("Bad request");
+    }
+
     await options.hook(req, res);
     next();
   });
