@@ -1,4 +1,3 @@
-const http = require("http");
 const fs = require("fs");
 const { randomUUID } = require("crypto");
 const { join } = require("path");
@@ -78,8 +77,7 @@ async function nulls(opt = {}) {
 
   const upload = multer({ "dest": options.uploads });
   const app = express();
-  const server = http.createServer(app);
-  await options.init(app, server);
+  await options.init(app);
   app.use(cookieParser());
   if (options.forceHttps) app.enable("trust proxy");
   app.use(async (req, res, next) => {
@@ -285,7 +283,7 @@ async function nulls(opt = {}) {
     res.end(await render(options.root, req, res));
   });
 
-  server.listen(options.port, () => options.ready());
+  app.listen(options.port, () => options.ready());
 }
 
 module.exports = { nulls, NullsPathError, NullsArgumentError, NullsScriptError };
