@@ -33,5 +33,10 @@
     "express": "^4.21.1",
     "gxlg-utils": "^1.4.0",
     "multer": "^1.4.5-lts.1"
+  },
+  "overrides": {
+    "cheerio": {
+      "undici": "6.21.1"
+    }
   }
 }

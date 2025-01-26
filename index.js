@@ -86,11 +86,6 @@ async function nulls(opt = {}) {
     if (host != "localhost" && options.forceHttps && !req.secure)
       return res.redirect("https://" + host + req.url);
 
-    if (req.method == "POST" && !options.emptyPOST && req.body == null) {
-      res.status(400);
-      return res.end("Bad request");
-    }
-
     await options.hook(req, res);
     next();
   });
@@ -219,7 +214,13 @@ async function nulls(opt = {}) {
           "API #" + i + " at " + file + " does not provide an action"
         );
       }
-      app.post(action, upload.fields(u), script);
+      app.post(action, upload.fields(u), async (req, res, next) => {
+        if (!options.emptyPOST && req.body == null) {
+          res.status(400);
+          return res.end("Bad request");
+        }
+        await script(req, res, next);
+      });
     }
 
     htmls[file] = html.html();
