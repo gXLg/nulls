@@ -21,16 +21,17 @@ class NullsArgumentError extends NullBaseError {}
 class NullsScriptError extends NullBaseError {}
 
 const parser = optparser([
-  { "name": "uploads",    "types": ["./uploads/", false]      },
-  { "name": "forceHttps", "types": [false]                    },
-  { "name": "init",       "types": [() => {}, async () => {}] },
-  { "name": "hook",       "types": [() => {}, async () => {}] },
-  { "name": "nulls",      "types": ["./nulls/"]               },
-  { "name": "root",       "types": ["root.html"]              },
-  { "name": "static",     "types": ["./static/", false]       },
-  { "name": "port",       "types": [8080]                     },
-  { "name": "ready",      "types": [() => {}, async () => {}] },
-  { "name": "emptyPOST",  "types": [false]                    }
+  { "name": "uploads",      "types": ["./uploads/", false]      },
+  { "name": "forceHttps",   "types": [false]                    },
+  { "name": "init",         "types": [() => {}, async () => {}] },
+  { "name": "hook",         "types": [() => {}, async () => {}] },
+  { "name": "nulls",        "types": ["./nulls/"]               },
+  { "name": "root",         "types": ["root.html"]              },
+  { "name": "static",       "types": ["./static/", false]       },
+  { "name": "port",         "types": [8080]                     },
+  { "name": "ready",        "types": [() => {}, async () => {}] },
+  { "name": "emptyPOST",    "types": [false]                    },
+  { "name": "preprocessor", "types": [() => {}, async () => {}] }
 ], NullsArgumentError);
 
 function parentRequire(mod) {
@@ -239,6 +240,8 @@ async function nulls(opt = {}) {
         );
       }
       const html = file == root ? cheerio.load(htmls[file]) : cheerio.load(htmls[file], null, false);
+      await options.preprocessor(rhtml, req, res);
+
       const nulls = html("[null-id]");
       for (let i = 0; i < nulls.length; i++) {
         const element = nulls.eq(i);
