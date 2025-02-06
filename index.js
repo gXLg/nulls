@@ -240,7 +240,7 @@ async function nulls(opt = {}) {
         );
       }
       const html = file == root ? cheerio.load(htmls[file]) : cheerio.load(htmls[file], null, false);
-      await options.preprocessor(rhtml, req, res);
+      await options.preprocessor(html, req, res);
 
       const nulls = html("[null-id]");
       for (let i = 0; i < nulls.length; i++) {
