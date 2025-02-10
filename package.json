@@ -4,8 +4,7 @@
   "description": "Simple HTML framework for express",
   "main": "index.js",
   "files": [
-    "index.js",
-    "scripts"
+    "index.js"
   ],
   "scripts": {
     "test": "cd example; node app.js",

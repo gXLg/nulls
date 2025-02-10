@@ -229,6 +229,11 @@ async function nulls(opt = {}) {
 
   if (options.static) app.use("/static", express.static(options.static));
 
+  app.head("*", (req, res) => {
+    res.type("html");
+    res.end();
+  });
+
   app.get("*", async (req, res) => {
 
     async function render(partf, ...args) {
@@ -291,6 +296,7 @@ async function nulls(opt = {}) {
       }
       return html.html();
     }
+    res.type("html");
     res.end(await render(options.root, req, res));
   });
 
