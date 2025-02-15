@@ -1,6 +1,6 @@
 {
   "name": "nulls",
-  "version": "2.5.3",
+  "version": "2.5.4",
   "description": "Simple HTML framework for express",
   "main": "index.js",
   "files": [
