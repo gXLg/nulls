@@ -96,7 +96,7 @@ async function nulls(opt = {}) {
   while (open.length) {
     const current = open.shift();
     for (const entry of fs.readdirSync(current, { "withFileTypes": true })) {
-      const fullPath = join(entry.parentPath, entry.name);
+      const fullPath = join(entry.parentPath ?? entry.path, entry.name);
       if (entry.isDirectory()) open.push(fullPath);
       else if (fullPath.endsWith(".html")) paths.add(fullPath);
     }
