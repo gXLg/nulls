@@ -57,6 +57,9 @@ async function handleAttrScript(element, name) {
     if (attr[0] == "$") {
       const path = attr.slice(1);
       return parentRequire(path);
+    } else if (attr[0] == "#") {
+      const value = attr.slice(1);
+      return () => value;
     } else {
       return await exec(attr, false);
     }
