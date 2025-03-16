@@ -316,7 +316,7 @@ async function nulls(opt = {}) {
         let found = false;
 
         let condition = true;
-        if (id in ifs[file]) { condition = await ifs[files][id](...args); }
+        if (id in ifs[file]) { condition = await ifs[file][id](...args); }
         if (!condition) continue;
 
         if (id in containers[file]) {
