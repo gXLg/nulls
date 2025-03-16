@@ -119,6 +119,8 @@ async function nulls(opt = {}) {
   const datas = {};
   const tags = {};
 
+  const ifs = {};
+
   const htmls = {};
 
   for (const file of paths) {
@@ -187,6 +189,21 @@ async function nulls(opt = {}) {
       const id = l.attr("null-id") ?? randomUUID();
       l.attr("null-id", id);
       tags[file][id] = script;
+    }
+
+    const cond = html("[null-if]");
+    ifs[file] = {};
+    for (let i = 0; i < cond.length; i++) {
+      const l = tag.eq(i);
+      const script = await handleAttrScript(l, "null-if");
+      if (script == null) {
+        throw new NullsArgumentError(
+          "Condition #" + i + " at " + file + " does not provide a script"
+        );
+      }
+      const id = l.attr("null-id") ?? randomUUID();
+      l.attr("null-id", id);
+      ifs[file][id] = script;
     }
 
     const api = html("form[null-api]");
@@ -294,6 +311,11 @@ async function nulls(opt = {}) {
         const id = element.attr("null-id");
         element.attr("null-id", null);
         let found = false;
+
+        let condition = true;
+        if (id in ifs[file]) { condition = await ifs[files][id](...args); }
+        if (!condition) continue;
+
         if (id in containers[file]) {
           if (id in lists[file]) {
             element.html("");
@@ -313,11 +335,6 @@ async function nulls(opt = {}) {
           }
           found = true;
         }
-        if (id in adders[file]) {
-          const c = await adders[file][id](...args);
-          element.append(await render(c, ...args));
-          found = true;
-        }
         if (id in datas[file]) {
           const d = await datas[file][id](...args);
           element.text(d);
@@ -326,6 +343,25 @@ async function nulls(opt = {}) {
         if (id in tags[file]) {
           const [n, v] = await tags[file][id](...args);
           element.attr(n, v);
+          found = true;
+        }
+        // adder in complete end (add after all others)
+        if (id in adders[file]) {
+          if (id in lists[file]) {
+            const l = await lists[file][id](...args);
+            if (!(Symbol.iterator in Object(l))) {
+              throw new NullsScriptError(
+                "List #" + i + " at " + file + " is not iterable!"
+              );
+            }
+            for (const el of l) {
+              const c = await adders[file][id](...args, el);
+              element.append(await render(c, ...args, el));
+            }
+          } else {
+            const c = await adders[file][id](...args);
+            element.append(await render(c, ...args));
+          }
           found = true;
         }
         if (!found) {
