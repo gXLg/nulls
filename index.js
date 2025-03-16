@@ -282,7 +282,7 @@ async function nulls(opt = {}) {
         }
         if (id in datas[file]) {
           const d = await datas[file][id](...args);
-          element.html(d);
+          element.text(d);
           found = true;
         }
         if (id in tags[file]) {
