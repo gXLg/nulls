@@ -194,7 +194,7 @@ async function nulls(opt = {}) {
     const cond = html("[null-if]");
     ifs[file] = {};
     for (let i = 0; i < cond.length; i++) {
-      const l = tag.eq(i);
+      const l = cond.eq(i);
       const script = await handleAttrScript(l, "null-if");
       if (script == null) {
         throw new NullsArgumentError(
