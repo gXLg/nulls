@@ -127,7 +127,7 @@ async function nulls(opt = {}) {
     const content = fs.readFileSync(file, "utf8");
     const html = file == root ? cheerio.load(content) : cheerio.load(content, null, false);
 
-    const cont = html("[null-container]");
+    const cont = html("[null-container]:not(script)");
     containers[file] = {};
     lists[file] = {};
     for (let i = 0; i < cont.length; i++) {
@@ -146,7 +146,7 @@ async function nulls(opt = {}) {
       if (lscript != null) lists[file][id] = lscript;
     }
 
-    const add = html("[null-adder]");
+    const add = html("[null-adder]:not(script)");
     adders[file] = {};
     for (let i = 0; i < add.length; i++) {
       const l = add.eq(i);
@@ -161,7 +161,7 @@ async function nulls(opt = {}) {
       adders[file][id] = script;
     }
 
-    const data = html("[null-data]");
+    const data = html("[null-data]:not(script)");
     datas[file] = {};
     for (let i = 0; i < data.length; i++) {
       const l = data.eq(i);
@@ -176,7 +176,7 @@ async function nulls(opt = {}) {
       datas[file][id] = script;
     }
 
-    const tag = html("[null-tag]");
+    const tag = html("[null-tag]:not(script)");
     tags[file] = {};
     for (let i = 0; i < tag.length; i++) {
       const l = tag.eq(i);
@@ -191,7 +191,7 @@ async function nulls(opt = {}) {
       tags[file][id] = script;
     }
 
-    const cond = html("[null-if]");
+    const cond = html("[null-if]:not(script)");
     ifs[file] = {};
     for (let i = 0; i < cond.length; i++) {
       const l = cond.eq(i);
@@ -244,7 +244,7 @@ async function nulls(opt = {}) {
       });
     }
 
-    const api2 = html("[null-api]:not(form)");
+    const api2 = html("[null-api]:not(form):not(script)");
     for (let i = 0; i < api2.length; i++) {
       const l = api2.eq(i);
       const script = await handleAttrScript(l, "null-api");
