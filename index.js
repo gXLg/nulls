@@ -215,7 +215,7 @@ async function nulls(opt = {}) {
           "API #" + i + " at " + file + " does not provide a script"
         );
       }
-      const up = (await handleAttrScript(l, "null-upload")) ?? { };
+      const up = await handleAttrScript(l, "null-upload");
       if (up && !options.uploads) {
         throw new NullsArgumentError(
           "API #" + i + " at " + file +
@@ -223,7 +223,7 @@ async function nulls(opt = {}) {
         );
       }
       const u = [];
-      for (const name in up) {
+      for (const name in up ?? { }) {
         u.push({ name, "maxCount": up[name] });
       }
       l.attr("enctype", "multipart/form-data");
@@ -253,7 +253,7 @@ async function nulls(opt = {}) {
           "API #" + i + " at " + file + " does not provide a script"
         );
       }
-      const up = (await handleAttrScript(l, "null-upload")) ?? { };
+      const up = await handleAttrScript(l, "null-upload");
       if (up && !options.uploads) {
         throw new NullsArgumentError(
           "API #" + i + " at " + file +
@@ -261,7 +261,7 @@ async function nulls(opt = {}) {
         );
       }
       const u = [];
-      for (const name in up) {
+      for (const name in up ?? { }) {
         u.push({ name, "maxCount": up[name] });
       }
       l.attr("formenctype", "multipart/form-data");
