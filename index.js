@@ -156,9 +156,12 @@ async function nulls(opt = {}) {
           "Adder #" + i + " at " + file + " does not provide a script"
         );
       }
+      const lscript = await handleAttrScript(l, "null-list");
+
       const id = l.attr("null-id") ?? randomUUID();
       l.attr("null-id", id);
       adders[file][id] = script;
+      if (lscript != null) lists[file][id] = lscript;
     }
 
     const data = html("[null-data]:not(script)");
