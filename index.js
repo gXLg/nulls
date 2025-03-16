@@ -198,16 +198,16 @@ async function nulls(opt = {}) {
           "API #" + i + " at " + file + " does not provide a script"
         );
       }
-      const u = [];
-      if (l.attr("null-upload") && !options.uploads) {
+      const up = (await handleAttrScript(l, "null-upload")) ?? { };
+      if (up && !options.uploads) {
         throw new NullsArgumentError(
           "API #" + i + " at " + file +
           " provides upload although the upload was disabled"
         );
       }
-      const up = (await handleAttrScript(l, "null-upload")) ?? { };
+      const u = [];
       for (const name in up) {
-        u.push({ name, "maxCount": r[name] });
+        u.push({ name, "maxCount": up[name] });
       }
       l.attr("enctype", "multipart/form-data");
       l.attr("method", "POST");
@@ -216,6 +216,44 @@ async function nulls(opt = {}) {
       if (action == null) {
         throw new NullsArgumentError(
           "API #" + i + " at " + file + " does not provide an action"
+        );
+      }
+      app.post(action, upload.fields(u), async (req, res, next) => {
+        if (!options.emptyPOST && req.body == null) {
+          res.status(400);
+          return res.end("Bad request");
+        }
+        await script(req, res, next);
+      });
+    }
+
+    const api2 = html("[null-api]:not(form)");
+    for (let i = 0; i < api2.length; i++) {
+      const l = api2.eq(i);
+      const script = await handleAttrScript(l, "null-api");
+      if (script == null) {
+        throw new NullsArgumentError(
+          "API #" + i + " at " + file + " does not provide a script"
+        );
+      }
+      const up = (await handleAttrScript(l, "null-upload")) ?? { };
+      if (up && !options.uploads) {
+        throw new NullsArgumentError(
+          "API #" + i + " at " + file +
+          " provides upload although the upload was disabled"
+        );
+      }
+      const u = [];
+      for (const name in up) {
+        u.push({ name, "maxCount": up[name] });
+      }
+      l.attr("formenctype", "multipart/form-data");
+      l.attr("formmethod", "POST");
+
+      const action = l.attr("formaction");
+      if (action == null) {
+        throw new NullsArgumentError(
+          "API #" + i + " at " + file + " does not provide a form action"
         );
       }
       app.post(action, upload.fields(u), async (req, res, next) => {
