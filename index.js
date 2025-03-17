@@ -123,6 +123,8 @@ async function nulls(opt = {}) {
 
   const htmls = {};
 
+  const apis = {};
+
   for (const file of paths) {
     const content = fs.readFileSync(file, "utf8");
     const html = file == root ? cheerio.load(content) : cheerio.load(content, null, false);
@@ -209,53 +211,24 @@ async function nulls(opt = {}) {
       ifs[file][id] = script;
     }
 
-    const api = html("form[null-api]");
+    const api = html("[null-api]:not(script)");
     for (let i = 0; i < api.length; i++) {
       const l = api.eq(i);
-      const script = await handleAttrScript(l, "null-api");
-      if (script == null) {
-        throw new NullsArgumentError(
-          "API #" + i + " at " + file + " does not provide a script"
-        );
-      }
-      const up = await handleAttrScript(l, "null-upload");
-      if (up && !options.uploads) {
-        throw new NullsArgumentError(
-          "API #" + i + " at " + file +
-          " provides upload although the upload was disabled"
-        );
-      }
-      const u = [];
-      for (const name in up ?? { }) {
-        u.push({ name, "maxCount": up[name] });
-      }
-      l.attr("enctype", "multipart/form-data");
-      l.attr("method", "POST");
+      const f = l.is("form") ? "" : "form";
 
-      const action = l.attr("action");
+      const script = await handleAttrScript(l, "null-api");
+      const ascript = await handleAttrScript(l, "null-access");
+
+      l.attr(f + "enctype", "multipart/form-data");
+      l.attr(f + "method", "POST");
+
+      const action = l.attr(f + "action");
       if (action == null) {
         throw new NullsArgumentError(
           "API #" + i + " at " + file + " does not provide an action"
         );
       }
-      app.post(action, upload.fields(u), async (req, res, next) => {
-        if (!options.emptyPOST && req.body == null) {
-          res.status(400);
-          return res.end("Bad request");
-        }
-        await script(req, res, next);
-      });
-    }
 
-    const api2 = html("[null-api]:not(form):not(script)");
-    for (let i = 0; i < api2.length; i++) {
-      const l = api2.eq(i);
-      const script = await handleAttrScript(l, "null-api");
-      if (script == null) {
-        throw new NullsArgumentError(
-          "API #" + i + " at " + file + " does not provide a script"
-        );
-      }
       const up = await handleAttrScript(l, "null-upload");
       if (up && !options.uploads) {
         throw new NullsArgumentError(
@@ -263,29 +236,59 @@ async function nulls(opt = {}) {
           " provides upload although the upload was disabled"
         );
       }
-      const u = [];
-      for (const name in up ?? { }) {
-        u.push({ name, "maxCount": up[name] });
-      }
-      l.attr("formenctype", "multipart/form-data");
-      l.attr("formmethod", "POST");
 
-      const action = l.attr("formaction");
-      if (action == null) {
+      if (!(action in apis)) apis[action] = { };
+      const p = apis[action];
+      if (p.script != null && script != null) {
         throw new NullsArgumentError(
-          "API #" + i + " at " + file + " does not provide a form action"
+          "API #" + i + " at " + file + " provides a script, but this action already has a script"
         );
       }
-      app.post(action, upload.fields(u), async (req, res, next) => {
-        if (!options.emptyPOST && req.body == null) {
-          res.status(400);
-          return res.end("Bad request");
-        }
-        await script(req, res, next);
-      });
+      p.script = script;
+      if (p.ascript != null && ascript != null) {
+        throw new NullsArgumentError(
+          "API #" + i + " at " + file + " provides an access script, but this action already has an access script"
+        );
+      }
+      p.ascript = ascript;
+      if (p.up != null && up != null) {
+        throw new NullsArgumentError(
+          "API #" + i + " at " + file + " provides an upload, but this action already has an upload"
+        );
+      }
+      p.up = up;
     }
 
     htmls[file] = html.html();
+  }
+
+  for (const action in apis) {
+    const p = apis[action];
+    if (p.script == null) {
+      throw new NullsArgumentError(
+        "API for " + action + " does not provide a script"
+      );
+    }
+    const script = p.script;
+    const ascript = p.ascript;
+    const up = p.up;
+
+    const u = [];
+    for (const name in up ?? { }) {
+      u.push({ name, "maxCount": up[name] });
+    }
+
+    app.post(action, upload.fields(u), async (req, res, next) => {
+      if (!options.emptyPOST && req.body == null) {
+        res.status(400);
+        return res.end("Bad request");
+      }
+      if (ascript != null && !(await ascript(req, res))) {
+        res.status(403);
+        return res.end("Permission denied");
+      }
+      await script(req, res, next);
+    });
   }
 
   if (options.static) app.use("/static", express.static(options.static));
