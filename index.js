@@ -31,7 +31,8 @@ const parser = optparser([
   { "name": "port",         "types": [8080]                     },
   { "name": "ready",        "types": [() => {}, async () => {}] },
   { "name": "emptyPOST",    "types": [false]                    },
-  { "name": "preprocessor", "types": [() => {}, async () => {}] }
+  { "name": "preprocessor", "types": [() => {}, async () => {}] },
+  { "name": "plugins",      "types": [[]]                       }
 ], NullsArgumentError);
 
 function parentRequire(mod) {
@@ -80,19 +81,23 @@ async function handleAttrScript(element, name) {
 async function nulls(opt = {}) {
   const options = parser(opt);
 
+  for (const plugin of options.plugins.toReversed()) {
+    await plugin(options);
+  }
+
   const upload = multer({ "dest": options.uploads });
   const app = express();
   await options.init(app);
-  app.use(cookieParser());
+  if (options.static) app.use("/static", express.static(options.static));
+
   if (options.forceHttps) app.enable("trust proxy");
   app.use(async (req, res, next) => {
     const host = req.get("host");
     if (host != "localhost" && options.forceHttps && !req.secure)
       return res.redirect("https://" + host + req.url);
-
-    await options.hook(req, res);
     next();
   });
+  app.use(cookieParser());
 
   const paths = new Set();
   const open = [options.nulls];
@@ -262,6 +267,16 @@ async function nulls(opt = {}) {
     htmls[file] = html.html();
   }
 
+  app.head("*", (req, res) => {
+    res.type("html");
+    res.end();
+  });
+
+  app.use(async (req, res, next) => {
+    await options.hook(req, res);
+    next();
+  });
+
   for (const action in apis) {
     const p = apis[action];
     if (p.script == null) {
@@ -278,7 +293,7 @@ async function nulls(opt = {}) {
       u.push({ name, "maxCount": up[name] });
     }
 
-    app.post(action, upload.fields(u), async (req, res, next) => {
+    app.post(action, upload.fields(u), async (req, res) => {
       if (!options.emptyPOST && req.body == null) {
         res.status(400);
         return res.end("Bad request");
@@ -287,16 +302,9 @@ async function nulls(opt = {}) {
         res.status(403);
         return res.end("Permission denied");
       }
-      await script(req, res, next);
+      await script(req, res);
     });
   }
-
-  if (options.static) app.use("/static", express.static(options.static));
-
-  app.head("*", (req, res) => {
-    res.type("html");
-    res.end();
-  });
 
   app.get("*", async (req, res) => {
 
