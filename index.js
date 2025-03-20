@@ -405,7 +405,7 @@ async function nulls(opt = {}) {
           );
         }
       }
-      if (file == options.root) await options.postprocessor(html, req, res);
+      if (file == root) await options.postprocessor(html, req, res);
       return html.html();
     }
     try {
