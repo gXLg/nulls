@@ -30,7 +30,6 @@ const parser = optparser([
   { "name": "static",        "types": ["./static/", false]       },
   { "name": "port",          "types": [8080]                     },
   { "name": "ready",         "types": [() => {}, async () => {}] },
-  { "name": "emptyPOST",     "types": [false]                    },
   { "name": "preprocessor",  "types": [() => {}, async () => {}] },
   { "name": "postprocessor", "types": [() => {}, async () => {}] },
   { "name": "srcProviders",  "types": [{}]                       },
@@ -310,8 +309,8 @@ async function nulls(opt = {}) {
     }
 
     app.post(action, upload.fields(u), async (req, res) => {
-      if (!options.emptyPOST && req.body == null) {
-        res.status(400).end("Bad request");
+      if (req.body == null) {
+        return res.status(400).end("Bad request");
       }
       try {
         if (ascript != null && !(await ascript(req, res))) {
