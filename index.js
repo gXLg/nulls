@@ -22,7 +22,7 @@ class NullsScriptError extends NullBaseError {}
 
 const parser = optparser([
   { "name": "uploads",      "types": ["./uploads/", false]      },
-  { "name": "forceHttps",   "types": [false]                    },
+  { "name": "forceHTTPS",   "types": [false]                    },
   { "name": "init",         "types": [() => {}, async () => {}] },
   { "name": "hook",         "types": [() => {}, async () => {}] },
   { "name": "nulls",        "types": ["./nulls/"]               },
@@ -32,6 +32,7 @@ const parser = optparser([
   { "name": "ready",        "types": [() => {}, async () => {}] },
   { "name": "emptyPOST",    "types": [false]                    },
   { "name": "preprocessor", "types": [() => {}, async () => {}] },
+  { "name": "srcProviders", "types": [{}]                       },
   { "name": "plugins",      "types": [[]]                       }
 ], NullsArgumentError);
 
@@ -50,7 +51,7 @@ async function exec(code, block) {
   }
 }
 
-async function handleAttrScript(element, name) {
+async function handleAttrScript(element, name, providers) {
   // first try attribute
   const attr = element.attr(name);
   element.attr(name, null);
@@ -62,10 +63,18 @@ async function handleAttrScript(element, name) {
       const value = attr.slice(1);
       return () => value;
     } else {
+      // try other providers first
+      for (const p in providers) {
+        if (attr.startsWith(p)) {
+          const val = attr.slice(p.length);
+          return await providers[p](val);
+        }
+      }
+      // then run inline script
       return await exec(attr, false);
     }
   }
-  // then try script
+  // then try script block
   const s = element.find("script[" + name + "]");
   const script = s.text();
   if (script != "") {
@@ -139,13 +148,13 @@ async function nulls(opt = {}) {
     lists[file] = {};
     for (let i = 0; i < cont.length; i++) {
       const l = cont.eq(i);
-      const script = await handleAttrScript(l, "null-container");
+      const script = await handleAttrScript(l, "null-container", options.srcProviders);
       if (script == null) {
         throw new NullsArgumentError(
           "Container #" + i + " at " + file + " does not provide a script"
         );
       }
-      const lscript = await handleAttrScript(l, "null-list");
+      const lscript = await handleAttrScript(l, "null-list", options.srcProviders);
 
       const id = l.attr("null-id") ?? randomUUID();
       l.attr("null-id", id);
@@ -157,13 +166,13 @@ async function nulls(opt = {}) {
     adders[file] = {};
     for (let i = 0; i < add.length; i++) {
       const l = add.eq(i);
-      const script = await handleAttrScript(l, "null-adder");
+      const script = await handleAttrScript(l, "null-adder", options.srcProviders);
       if (script == null) {
         throw new NullsArgumentError(
           "Adder #" + i + " at " + file + " does not provide a script"
         );
       }
-      const lscript = await handleAttrScript(l, "null-list");
+      const lscript = await handleAttrScript(l, "null-list", options.srcProviders);
 
       const id = l.attr("null-id") ?? randomUUID();
       l.attr("null-id", id);
@@ -175,7 +184,7 @@ async function nulls(opt = {}) {
     datas[file] = {};
     for (let i = 0; i < data.length; i++) {
       const l = data.eq(i);
-      const script = await handleAttrScript(l, "null-data");
+      const script = await handleAttrScript(l, "null-data", options.srcProviders);
       if (script == null) {
         throw new NullsArgumentError(
           "Data #" + i + " at " + file + " does not provide a script"
@@ -190,7 +199,7 @@ async function nulls(opt = {}) {
     tags[file] = {};
     for (let i = 0; i < tag.length; i++) {
       const l = tag.eq(i);
-      const script = await handleAttrScript(l, "null-tag");
+      const script = await handleAttrScript(l, "null-tag", options.srcProviders);
       if (script == null) {
         throw new NullsArgumentError(
           "Tagger #" + i + " at " + file + " does not provide a script"
@@ -205,7 +214,7 @@ async function nulls(opt = {}) {
     ifs[file] = {};
     for (let i = 0; i < cond.length; i++) {
       const l = cond.eq(i);
-      const script = await handleAttrScript(l, "null-if");
+      const script = await handleAttrScript(l, "null-if", options.srcProviders);
       if (script == null) {
         throw new NullsArgumentError(
           "Condition #" + i + " at " + file + " does not provide a script"
@@ -221,8 +230,8 @@ async function nulls(opt = {}) {
       const l = api.eq(i);
       const f = l.is("form") ? "" : "form";
 
-      const script = await handleAttrScript(l, "null-api");
-      const ascript = await handleAttrScript(l, "null-access");
+      const script = await handleAttrScript(l, "null-api", options.srcProviders);
+      const ascript = await handleAttrScript(l, "null-access", options.srcProviders);
 
       l.attr(f + "enctype", "multipart/form-data");
       l.attr(f + "method", "POST");
@@ -234,7 +243,7 @@ async function nulls(opt = {}) {
         );
       }
 
-      const up = await handleAttrScript(l, "null-upload");
+      const up = await handleAttrScript(l, "null-upload", options.srcProviders);
       if (up && !options.uploads) {
         throw new NullsArgumentError(
           "API #" + i + " at " + file +
