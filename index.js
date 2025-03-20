@@ -273,8 +273,14 @@ async function nulls(opt = {}) {
   });
 
   app.use(async (req, res, next) => {
-    await options.hook(req, res);
-    next();
+    try {
+      await options.hook(req, res);
+      next();
+    } catch (e) {
+      console.log("Error occured during hook execution on", req.method, req.path);
+      console.error(e);
+      res.status(500).end("Internal Server Error");
+    }
   });
 
   for (const action in apis) {
@@ -295,14 +301,18 @@ async function nulls(opt = {}) {
 
     app.post(action, upload.fields(u), async (req, res) => {
       if (!options.emptyPOST && req.body == null) {
-        res.status(400);
-        return res.end("Bad request");
+        res.status(400).end("Bad request");
       }
-      if (ascript != null && !(await ascript(req, res))) {
-        res.status(403);
-        return res.end("Permission denied");
+      try {
+        if (ascript != null && !(await ascript(req, res))) {
+          res.status(403).end("Permission denied");
+        }
+        await script(req, res);
+      } catch (e) {
+        console.log("Error occured during API execution of", action);
+        console.error(e);
+        res.status(500).end("Internal Server Error");
       }
-      await script(req, res);
     });
   }
 
@@ -387,8 +397,14 @@ async function nulls(opt = {}) {
       }
       return html.html();
     }
-    res.type("html");
-    res.end(await render(options.root, req, res));
+    try {
+      const html = await render(options.root, req, res);
+      res.type("html").end(html);
+    } catch (e) {
+      console.log("Error occured during dynamic rendering of", req.method, req.path);
+      console.error(e);
+      res.status(500).end("Internal Server Error");
+    }
   });
 
   return app.listen(options.port, () => options.ready());
