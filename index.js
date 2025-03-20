@@ -21,19 +21,20 @@ class NullsArgumentError extends NullBaseError {}
 class NullsScriptError extends NullBaseError {}
 
 const parser = optparser([
-  { "name": "uploads",      "types": ["./uploads/", false]      },
-  { "name": "forceHTTPS",   "types": [false]                    },
-  { "name": "init",         "types": [() => {}, async () => {}] },
-  { "name": "hook",         "types": [() => {}, async () => {}] },
-  { "name": "nulls",        "types": ["./nulls/"]               },
-  { "name": "root",         "types": ["root.html"]              },
-  { "name": "static",       "types": ["./static/", false]       },
-  { "name": "port",         "types": [8080]                     },
-  { "name": "ready",        "types": [() => {}, async () => {}] },
-  { "name": "emptyPOST",    "types": [false]                    },
-  { "name": "preprocessor", "types": [() => {}, async () => {}] },
-  { "name": "srcProviders", "types": [{}]                       },
-  { "name": "plugins",      "types": [[]]                       }
+  { "name": "uploads",       "types": ["./uploads/", false]      },
+  { "name": "forceHTTPS",    "types": [false]                    },
+  { "name": "init",          "types": [() => {}, async () => {}] },
+  { "name": "hook",          "types": [() => {}, async () => {}] },
+  { "name": "nulls",         "types": ["./nulls/"]               },
+  { "name": "root",          "types": ["root.html"]              },
+  { "name": "static",        "types": ["./static/", false]       },
+  { "name": "port",          "types": [8080]                     },
+  { "name": "ready",         "types": [() => {}, async () => {}] },
+  { "name": "emptyPOST",     "types": [false]                    },
+  { "name": "preprocessor",  "types": [() => {}, async () => {}] },
+  { "name": "postprocessor", "types": [() => {}, async () => {}] },
+  { "name": "srcProviders",  "types": [{}]                       },
+  { "name": "plugins",       "types": [[]]                       }
 ], NullsArgumentError);
 
 function parentRequire(mod) {
@@ -404,6 +405,7 @@ async function nulls(opt = {}) {
           );
         }
       }
+      if (file == options.root) await options.postprocessor(html, req, res);
       return html.html();
     }
     try {
