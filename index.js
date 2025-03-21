@@ -51,47 +51,47 @@ async function exec(code, block) {
   }
 }
 
-async function handleAttrScript(element, name, providers) {
-  // first try attribute
-  const attr = element.attr(name);
-  element.attr(name, null);
-  if (attr) {
-    if (attr[0] == "$") {
-      const path = attr.slice(1);
-      return parentRequire(path);
-    } else if (attr[0] == "#") {
-      const value = attr.slice(1);
-      return () => value;
-    } else {
-      // try other providers first
-      for (const p in providers) {
-        if (attr.startsWith(p)) {
-          const val = attr.slice(p.length);
-          return await providers[p](val);
-        }
-      }
-      // then run inline script
-      return await exec(attr, false);
-    }
-  }
-  // then try script block
-  const s = element.find("script[" + name + "]");
-  const script = s.text();
-  if (script != "") {
-    s.remove();
-    return await exec(script, true);
-  }
-  // finally, just return null
-  return null;
-}
-
 
 
 async function nulls(opt = {}) {
   const options = parser(opt);
 
+  async function handleAttrScript(element, name) {
+    // first try attribute
+    const attr = element.attr(name);
+    element.attr(name, null);
+    if (attr) {
+      if (attr[0] == "$") {
+        const path = attr.slice(1);
+        return parentRequire(path);
+      } else if (attr[0] == "#") {
+        const value = attr.slice(1);
+        return () => value;
+      } else {
+        // try other providers first
+        for (const p in options.providers) {
+          if (attr.startsWith(p)) {
+            const val = attr.slice(p.length);
+            return await providers[p](val);
+          }
+        }
+        // then run inline script
+        return await exec(attr, false);
+      }
+    }
+    // then try script block
+    const s = element.find("script[" + name + "]");
+    const script = s.text();
+    if (script != "") {
+      s.remove();
+      return await exec(script, true);
+    }
+    // finally, just return null
+    return null;
+  }
+
   for (const plugin of options.plugins.toReversed()) {
-    await plugin(options);
+    await plugin(options, handleAttrScript);
   }
 
   const upload = multer({ "dest": options.uploads });
@@ -148,13 +148,13 @@ async function nulls(opt = {}) {
     lists[file] = {};
     for (let i = 0; i < cont.length; i++) {
       const l = cont.eq(i);
-      const script = await handleAttrScript(l, "null-container", options.srcProviders);
+      const script = await handleAttrScript(l, "null-container");
       if (script == null) {
         throw new NullsArgumentError(
           "Container #" + i + " at " + file + " does not provide a script"
         );
       }
-      const lscript = await handleAttrScript(l, "null-list", options.srcProviders);
+      const lscript = await handleAttrScript(l, "null-list");
 
       const id = l.attr("null-id") ?? randomUUID();
       l.attr("null-id", id);
@@ -166,13 +166,13 @@ async function nulls(opt = {}) {
     adders[file] = {};
     for (let i = 0; i < add.length; i++) {
       const l = add.eq(i);
-      const script = await handleAttrScript(l, "null-adder", options.srcProviders);
+      const script = await handleAttrScript(l, "null-adder");
       if (script == null) {
         throw new NullsArgumentError(
           "Adder #" + i + " at " + file + " does not provide a script"
         );
       }
-      const lscript = await handleAttrScript(l, "null-list", options.srcProviders);
+      const lscript = await handleAttrScript(l, "null-list");
 
       const id = l.attr("null-id") ?? randomUUID();
       l.attr("null-id", id);
@@ -184,7 +184,7 @@ async function nulls(opt = {}) {
     datas[file] = {};
     for (let i = 0; i < data.length; i++) {
       const l = data.eq(i);
-      const script = await handleAttrScript(l, "null-data", options.srcProviders);
+      const script = await handleAttrScript(l, "null-data");
       if (script == null) {
         throw new NullsArgumentError(
           "Data #" + i + " at " + file + " does not provide a script"
@@ -199,7 +199,7 @@ async function nulls(opt = {}) {
     tags[file] = {};
     for (let i = 0; i < tag.length; i++) {
       const l = tag.eq(i);
-      const script = await handleAttrScript(l, "null-tag", options.srcProviders);
+      const script = await handleAttrScript(l, "null-tag");
       if (script == null) {
         throw new NullsArgumentError(
           "Tagger #" + i + " at " + file + " does not provide a script"
@@ -214,7 +214,7 @@ async function nulls(opt = {}) {
     ifs[file] = {};
     for (let i = 0; i < cond.length; i++) {
       const l = cond.eq(i);
-      const script = await handleAttrScript(l, "null-if", options.srcProviders);
+      const script = await handleAttrScript(l, "null-if");
       if (script == null) {
         throw new NullsArgumentError(
           "Condition #" + i + " at " + file + " does not provide a script"
@@ -230,8 +230,8 @@ async function nulls(opt = {}) {
       const l = api.eq(i);
       const f = l.is("form") ? "" : "form";
 
-      const script = await handleAttrScript(l, "null-api", options.srcProviders);
-      const ascript = await handleAttrScript(l, "null-access", options.srcProviders);
+      const script = await handleAttrScript(l, "null-api");
+      const ascript = await handleAttrScript(l, "null-access");
 
       l.attr(f + "enctype", "multipart/form-data");
       l.attr(f + "method", "POST");
@@ -243,7 +243,7 @@ async function nulls(opt = {}) {
         );
       }
 
-      const up = await handleAttrScript(l, "null-upload", options.srcProviders);
+      const up = await handleAttrScript(l, "null-upload");
       if (up && !options.uploads) {
         throw new NullsArgumentError(
           "API #" + i + " at " + file +
