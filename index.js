@@ -7,6 +7,8 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const cheerio = require("cheerio");
 const multer = require("multer");
+const cors = require("cors");
+const helmet = require("helmet");
 
 class NullBaseError extends Error {
   constructor(message) {
@@ -22,6 +24,7 @@ class NullsScriptError extends NullBaseError {}
 
 const parser = optparser([
   { "name": "uploads",       "types": ["./uploads/", false]      },
+  { "name": "uploadLimit",   "types": [false, 0]                 },
   { "name": "forceHTTPS",    "types": [false]                    },
   { "name": "init",          "types": [() => {}, async () => {}] },
   { "name": "hook",          "types": [() => {}, async () => {}] },
@@ -33,7 +36,9 @@ const parser = optparser([
   { "name": "preprocessor",  "types": [() => {}, async () => {}] },
   { "name": "postprocessor", "types": [() => {}, async () => {}] },
   { "name": "srcProviders",  "types": [{}]                       },
-  { "name": "plugins",       "types": [[]]                       }
+  { "name": "plugins",       "types": [[]]                       },
+  { "name": "domain",        "types": [""],     "required": true }
+
 ], NullsArgumentError);
 
 function parentRequire(mod) {
@@ -51,8 +56,6 @@ async function exec(code, block) {
   }
 }
 
-
-
 async function nulls(opt = {}) {
   const options = parser(opt);
 
@@ -69,10 +72,10 @@ async function nulls(opt = {}) {
         return () => value;
       } else {
         // try other providers first
-        for (const p in options.providers) {
+        for (const p in options.srcProviders) {
           if (attr.startsWith(p)) {
             const val = attr.slice(p.length);
-            return await providers[p](val);
+            return await options.srcProviders[p](val);
           }
         }
         // then run inline script
@@ -91,13 +94,14 @@ async function nulls(opt = {}) {
   }
 
   for (const plugin of options.plugins.toReversed()) {
-    await plugin(options, handleAttrScript);
+    await plugin(options);
   }
 
-  const upload = multer({ "dest": options.uploads });
   const app = express();
   await options.init(app);
-  if (options.static) app.use("/static", express.static(options.static));
+  app.use((req, res, next) => { res.setHeader("X-Powered-By", "Express + nulls"); next(); });
+
+  if (options.static) app.use("/static", cors(), express.static(options.static));
 
   if (options.forceHttps) app.enable("trust proxy");
   app.use(async (req, res, next) => {
@@ -107,6 +111,9 @@ async function nulls(opt = {}) {
     next();
   });
   app.use(cookieParser());
+
+  app.use(helmet.frameguard({ "action": "sameorigin" }));
+  app.use(cors({ "origin": options.domain }));
 
   const paths = new Set();
   const open = [options.nulls];
@@ -233,6 +240,16 @@ async function nulls(opt = {}) {
       const script = await handleAttrScript(l, "null-api");
       const ascript = await handleAttrScript(l, "null-access");
 
+      const ajax = l.attr("null-ajax");
+      if (ajax != null) {
+        l.attr("null-ajax", null);
+        if (l.is("form")) {
+          l.attr("onsubmit", "((e,t)=>{e.preventDefault();(" + ajax + ")(fetch(t.action,{method:'POST',body:new FormData(t)}));})(event,this)");
+        } else {
+          l.attr("onclick", "((e,t)=>{e.preventDefault();(" + ajax + ")(fetch(t.formAction,{method:'POST',body:new FormData(t.form)}));})(event,this)");
+        }
+      }
+
       l.attr(f + "enctype", "multipart/form-data");
       l.attr(f + "method", "POST");
 
@@ -286,12 +303,13 @@ async function nulls(opt = {}) {
       await options.hook(req, res);
       next();
     } catch (e) {
-      console.log("Error occured during hook execution on", req.method, req.path);
+      console.error("Error occured during hook execution on", req.method, req.path);
       console.error(e);
       res.status(500).end("Internal Server Error");
     }
   });
 
+  const upload = multer({ "dest": options.uploads });
   for (const action in apis) {
     const p = apis[action];
     if (p.script == null) {
@@ -301,26 +319,61 @@ async function nulls(opt = {}) {
     }
     const script = p.script;
     const ascript = p.ascript;
-    const up = p.up;
+    const up = p.up ?? { };
+
+    let limit = null;
+    if ("*" in up) {
+      limit = up["*"];
+      delete up["*"];
+    } else if (options.uploadLimit !== false) {
+      limit = options.uploadLimit;
+    }
 
     const u = [];
-    for (const name in up ?? { }) {
+    for (const name in up) {
       u.push({ name, "maxCount": up[name] });
     }
 
-    app.post(action, upload.fields(u), async (req, res) => {
-      if (req.body == null) {
-        return res.status(400).end("Bad request");
+    app.post(action, async (req, res, next) => {
+      if (limit != null) {
+        const size = parseInt(req.headers["content-length"]);
+        if (isNaN(size)) return res.status(411).end("Length Required");
+        if (size > limit) return res.status(413).end("Content Too Large");
       }
       try {
-        if (ascript != null && !(await ascript(req, res))) {
-          res.status(403).end("Permission denied");
-        }
-        await script(req, res);
+        if (ascript != null && !(await ascript(req, res)))
+          return res.status(403).end("Permission Denied");
+        next();
       } catch (e) {
-        console.log("Error occured during API execution of", action);
+        console.error("Error occured during API access check for", action);
         console.error(e);
         res.status(500).end("Internal Server Error");
+      }
+    }, upload.fields(u), async (err, req, res, next) => {
+      if (err) {
+        return res.status(400).end("Bad Request");
+      }
+      next();
+    }, async (req, res) => {
+      if (req.body == null || req.files == null) {
+        return res.status(400).end("Bad Request");
+      }
+      try {
+        await script(req, res);
+      } catch (e) {
+        console.error("Error occured during API execution of", action);
+        console.error(e);
+        res.status(500).end("Internal Server Error");
+      }
+      for (const name in req.files) {
+        for (const { path } of req.files[name]) {
+          try {
+            fs.unlinkSync(path);
+          } catch (e) {
+            console.error("Error occured during API cleanup of", action);
+            console.error(e);
+          }
+        }
       }
     });
   }
@@ -399,7 +452,7 @@ async function nulls(opt = {}) {
         }
         if (!found) {
           throw new NullsArgumentError(
-            "Manually provided invalid null-id #" + i +
+            "Non-reachable null element #" + i +
             " at " + file
           );
         }
@@ -411,7 +464,7 @@ async function nulls(opt = {}) {
       const html = await render(options.root, req, res);
       res.type("html").end(html);
     } catch (e) {
-      console.log("Error occured during dynamic rendering of", req.method, req.path);
+      console.error("Error occured during dynamic rendering of", req.method, req.path);
       console.error(e);
       res.status(500).end("Internal Server Error");
     }
