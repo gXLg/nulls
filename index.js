@@ -138,7 +138,7 @@ async function nulls(opt = {}) {
   const lists = {};
   const adders = {};
   const datas = {};
-  const tags = {};
+  const attrs = {};
 
   const ifs = {};
 
@@ -202,19 +202,19 @@ async function nulls(opt = {}) {
       datas[file][id] = script;
     }
 
-    const tag = html("[null-tag]:not(script)");
-    tags[file] = {};
+    const tag = html("[null-attr]:not(script)");
+    attrs[file] = {};
     for (let i = 0; i < tag.length; i++) {
       const l = tag.eq(i);
-      const script = await handleAttrScript(l, "null-tag");
+      const script = await handleAttrScript(l, "null-attr");
       if (script == null) {
         throw new NullsArgumentError(
-          "Tagger #" + i + " at " + file + " does not provide a script"
+          "Attribute #" + i + " at " + file + " does not provide a script"
         );
       }
       const id = l.attr("null-id") ?? randomUUID();
       l.attr("null-id", id);
-      tags[file][id] = script;
+      attrs[file][id] = script;
     }
 
     const cond = html("[null-if]:not(script)");
@@ -426,9 +426,9 @@ async function nulls(opt = {}) {
           element.text(d);
           found = true;
         }
-        if (id in tags[file]) {
-          const [n, v] = await tags[file][id](...args);
-          element.attr(n, v);
+        if (id in attrs[file]) {
+          const t = await attrs[file][id](...args);
+          for (const n in t) element.attr(n, t[n]);
           found = true;
         }
         // adder in complete end (add after all others)

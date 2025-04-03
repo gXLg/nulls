@@ -21,5 +21,5 @@ Internal handlers receive: request to parse cookies or path
 * `null-api` - form (or button) with the parameter
   * `null-upload` - additional parameter to parse files server-side
   * `null-access` - additional parameter to verify the API endpoint is called correctly (or else Error 403)
-* `null-tag` - handler returns name, value; the tag is set on element
+* `null-attr` - handler returns name-value object; the attribute is set on element
 * `null-if` - conditional execution
