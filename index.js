@@ -93,7 +93,8 @@ async function nulls(opt = {}) {
     return null;
   }
 
-  for (const plugin of options.plugins.toReversed()) {
+  for (let p = options.plugins.length - 1; p >= 0; p--) {
+    const plugin = options.plugins[p];
     await plugin(options);
   }
 
