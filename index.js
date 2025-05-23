@@ -37,7 +37,8 @@ const parser = optparser([
   { "name": "postprocessor", "types": [() => {}, async () => {}] },
   { "name": "srcProviders",  "types": [{}]                       },
   { "name": "plugins",       "types": [[]]                       },
-  { "name": "domain",        "types": [""],     "required": true }
+  { "name": "domain",        "types": [""],     "required": true },
+  { "name": "redirects",     "types": [{}],                      }
 
 ], NullsArgumentError);
 
@@ -392,6 +393,12 @@ async function nulls(opt = {}) {
           }
         }
       }
+    });
+  }
+
+  for (const name in options.redirects) {
+    app.get(name, async (req, res) => {
+      res.redirect(await options.redirects[name](req, res));
     });
   }
 
