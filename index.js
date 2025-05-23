@@ -398,7 +398,15 @@ async function nulls(opt = {}) {
 
   for (const name in options.redirects) {
     app.get(name, async (req, res) => {
-      res.redirect(await options.redirects[name](req, res));
+      const url = await options.redirects[name](req, res);
+
+      res.end(`
+<!DOCTYPE html>
+<html> <head> <meta http-equiv="refresh" content="0;url=${url}" />
+<script> window.location.href = "${url}"; </script>
+</head> <body> Redirecting... </body> </html>
+`);
+
     });
   }
 
