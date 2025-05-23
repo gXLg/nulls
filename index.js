@@ -140,6 +140,7 @@ async function nulls(opt = {}) {
   const adders = {};
   const datas = {};
   const attrs = {};
+  const aargs = {};
 
   const ifs = {};
 
@@ -216,6 +217,21 @@ async function nulls(opt = {}) {
       const id = l.attr("null-id") ?? randomUUID();
       l.attr("null-id", id);
       attrs[file][id] = script;
+    }
+
+    const aarg = html("[null-arg]:not(script)");
+    aargs[file] = {};
+    for (let i = 0; i < aarg.length; i++) {
+      const l = aarg.eq(i);
+      const script = await handleAttrScript(l, "null-arg");
+      if (script == null) {
+        throw new NullsArgumentError(
+          "Argument #" + i + " at " + file + " does not provide a script"
+        );
+      }
+      const id = l.attr("null-id") ?? randomUUID();
+      l.attr("null-id", id);
+      aargs[file][id] = script;
     }
 
     const cond = html("[null-if]:not(script)");
@@ -399,55 +415,60 @@ async function nulls(opt = {}) {
         element.attr("null-id", null);
         let found = false;
 
+        const cargs = [...args];
+        if (id in aargs[file]) {
+          cargs.push(await aargs[file][id](...args));
+        }
+
         let condition = true;
-        if (id in ifs[file]) { condition = await ifs[file][id](...args); }
+        if (id in ifs[file]) { condition = await ifs[file][id](...cargs); }
         if (!condition) continue;
 
         if (id in containers[file]) {
           if (id in lists[file]) {
             element.html("");
-            const l = await lists[file][id](...args);
+            const l = await lists[file][id](...cargs);
             if (!(Symbol.iterator in Object(l))) {
               throw new NullsScriptError(
                 "List #" + i + " at " + file + " is not iterable!"
               );
             }
             for (const el of l) {
-              const c = await containers[file][id](...args, el);
-              element.append(await render(c, ...args, el));
+              const c = await containers[file][id](...cargs, el);
+              element.append(await render(c, ...cargs, el));
             }
           } else {
-            const c = await containers[file][id](...args);
-            element.html(await render(c, ...args));
+            const c = await containers[file][id](...cargs);
+            element.html(await render(c, ...cargs));
           }
           found = true;
         }
         if (id in datas[file]) {
-          const d = await datas[file][id](...args);
+          const d = await datas[file][id](...cargs);
           element.text(d);
           found = true;
         }
         if (id in attrs[file]) {
-          const t = await attrs[file][id](...args);
+          const t = await attrs[file][id](...cargs);
           for (const n in t) element.attr(n, t[n]);
           found = true;
         }
         // adder in complete end (add after all others)
         if (id in adders[file]) {
           if (id in lists[file]) {
-            const l = await lists[file][id](...args);
+            const l = await lists[file][id](...cargs);
             if (!(Symbol.iterator in Object(l))) {
               throw new NullsScriptError(
                 "List #" + i + " at " + file + " is not iterable!"
               );
             }
             for (const el of l) {
-              const c = await adders[file][id](...args, el);
-              element.append(await render(c, ...args, el));
+              const c = await adders[file][id](...cargs, el);
+              element.append(await render(c, ...cargs, el));
             }
           } else {
-            const c = await adders[file][id](...args);
-            element.append(await render(c, ...args));
+            const c = await adders[file][id](...cargs);
+            element.append(await render(c, ...cargs));
           }
           found = true;
         }
