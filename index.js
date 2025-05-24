@@ -34,7 +34,7 @@ const parser = optparser([
   { "name": "port",          "types": [8080]                     },
   { "name": "ready",         "types": [() => {}, async () => {}] },
   { "name": "preprocessor",  "types": [() => {}, async () => {}] },
-  { "name": "postprocessor", "types": [() => {}, async () => {}] },
+  { "name": "postprocessor", "types": [t => t, async t => t]     },
   { "name": "srcProviders",  "types": [{}]                       },
   { "name": "plugins",       "types": [[]]                       },
   { "name": "domain",        "types": [""],     "required": true },
@@ -494,8 +494,9 @@ async function nulls(opt = {}) {
           );
         }
       }
-      if (file == root) await options.postprocessor(html, req, res);
-      return html.html();
+      const txt = html.html();
+      if (file == root) return await options.postprocessor(txt, req, res);
+      return txt;
     }
     try {
       const html = await render(options.root, req, res);
