@@ -262,9 +262,9 @@ async function nulls(opt = {}) {
       if (ajax != null) {
         l.attr("null-ajax", null);
         if (l.is("form")) {
-          l.attr("onsubmit", "((e,t)=>{e.preventDefault();(" + ajax + ")(fetch(t.action,{method:'POST',body:new FormData(t)}));})(event,this)");
+          l.attr("onsubmit", "((e,t)=>{e.preventDefault();fetch(t.action,{method:'POST',body:new FormData(t)}).then(" + ajax + ");})(event,this)");
         } else {
-          l.attr("onclick", "((e,t)=>{e.preventDefault();(" + ajax + ")(fetch(t.formAction,{method:'POST',body:new FormData(t.form)}));})(event,this)");
+          l.attr("onclick", "((e,t)=>{e.preventDefault();fetch(t.formAction,{method:'POST',body:new FormData(t.form)}).then(" + ajax + ");})(event,this)");
         }
       }
 
