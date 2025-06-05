@@ -9,6 +9,7 @@ const cheerio = require("cheerio");
 const multer = require("multer");
 const cors = require("cors");
 const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
 class NullBaseError extends Error {
   constructor(message) {
@@ -39,7 +40,8 @@ const parser = optparser([
   { "name": "srcProviders",  "types": [{}]                       },
   { "name": "plugins",       "types": [[]]                       },
   { "name": "domain",        "types": [""],     "required": true },
-  { "name": "redirects",     "types": [{}],                      }
+  { "name": "redirects",     "types": [{}],                      },
+  { "name": "proxies",       "types": [0, "", []]                }
 
 ], NullsArgumentError);
 
@@ -106,10 +108,10 @@ async function nulls(opt = {}) {
 
   if (options.static) app.use("/static", cors(), express.static(options.static));
 
-  if (options.forceHttps) app.enable("trust proxy");
+  app.set("trust proxy", options.proxies);
   app.use(async (req, res, next) => {
     const host = req.get("host");
-    if (host != "localhost" && options.forceHttps && !req.secure)
+    if (host == options.domain && options.forceHttps && !req.secure)
       return res.redirect("https://" + host + req.url);
     next();
   });
@@ -328,6 +330,7 @@ async function nulls(opt = {}) {
     }
   });
 
+  const rlimit = rateLimit({ "windowMs": 30000, "limit": 30 });
   const upload = multer({ "dest": options.uploads });
   for (const action in apis) {
     const p = apis[action];
@@ -353,7 +356,7 @@ async function nulls(opt = {}) {
       u.push({ name, "maxCount": up[name] });
     }
 
-    app.post(action, async (req, res, next) => {
+    app.post(action, rlimit, async (req, res, next) => {
       if (limit != null) {
         const size = parseInt(req.headers["content-length"]);
         if (isNaN(size)) return res.status(411).end("Length Required");

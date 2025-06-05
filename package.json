@@ -31,8 +31,9 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
     "gxlg-utils": "^1.4.0",
     "helmet": "^8.1.0",
-    "multer": "^2.0.0"
+    "multer": "^2.0.1"
   }
 }
