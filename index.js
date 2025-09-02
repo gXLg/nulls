@@ -41,7 +41,8 @@ const parser = optparser([
   { "name": "plugins",       "types": [[]]                       },
   { "name": "domain",        "types": [""],     "required": true },
   { "name": "redirects",     "types": [{}],                      },
-  { "name": "proxies",       "types": [0, "", []]                }
+  { "name": "proxies",       "types": [0, "", []]                },
+  { "name": "publicUploads", "types": [false, ""]                }
 
 ], NullsArgumentError);
 
@@ -107,6 +108,15 @@ async function nulls(opt = {}) {
   app.use((req, res, next) => { res.setHeader("X-Powered-By", "Express + nulls"); next(); });
 
   if (options.static) app.use("/static", cors(), express.static(options.static));
+  if (options.publicUploads) {
+    app.get(publicUploads + "/:filename", (req, res, next) => {
+      try {
+        res.sendFile(req.params.filename, { "root": publicUploads });
+      } catch (err) {
+        next();
+      }
+    });
+  }
 
   app.set("trust proxy", options.proxies);
   app.use(async (req, res, next) => {

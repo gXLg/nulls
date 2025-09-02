@@ -117,3 +117,4 @@ available at creation of a `nulls` instance.
 * `proxies` - passed to `app.set('trust proxy', proxies)` in order
   to securely process IP adresses
   * Useful for reverse proxies such as cloudflared tunnel
+* `publicUploads` - serve user-generated content
