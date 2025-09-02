@@ -111,7 +111,7 @@ async function nulls(opt = {}) {
   if (options.publicUploads) {
     app.get("/public/:filename", (req, res, next) => {
       try {
-        res.sendFile(req.params.filename, { "root": publicUploads });
+        res.sendFile(req.params.filename, { "root": options.publicUploads });
       } catch (err) {
         next();
       }
