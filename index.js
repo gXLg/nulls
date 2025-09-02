@@ -109,7 +109,7 @@ async function nulls(opt = {}) {
 
   if (options.static) app.use("/static", cors(), express.static(options.static));
   if (options.publicUploads) {
-    app.get(publicUploads + "/:filename", (req, res, next) => {
+    app.get("/public/:filename", (req, res, next) => {
       try {
         res.sendFile(req.params.filename, { "root": publicUploads });
       } catch (err) {
