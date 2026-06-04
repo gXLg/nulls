@@ -107,9 +107,11 @@ async function nulls(opt = {}) {
   await options.init(app);
   app.use((req, res, next) => { res.setHeader("X-Powered-By", "Express + nulls"); next(); });
 
+  const rlimit = rateLimit({ "windowMs": 30000, "limit": 30 });
+
   if (options.static) app.use("/static", cors(), express.static(options.static));
   if (options.publicUploads) {
-    app.get("/public/:filename", (req, res, next) => {
+    app.get("/public/:filename", rlimit, (req, res, next) => {
       res.sendFile(req.params.filename, { "root": options.publicUploads }, err => {
         if (err) next();
       });
@@ -147,18 +149,15 @@ async function nulls(opt = {}) {
     );
   }
 
-  const containers = {};
-  const lists = {};
-  const adders = {};
-  const datas = {};
-  const attrs = {};
-  const aargs = {};
-
-  const ifs = {};
-
-  const htmls = {};
-
-  const apis = {};
+  const containers = { };
+  const lists = { };
+  const adders = { };
+  const datas = { };
+  const attrs = { };
+  const aargs = { };
+  const ifs = { };
+  const htmls = { };
+  const apis = { };
 
   for (const file of paths) {
     const content = fs.readFileSync(file, "utf8");
@@ -338,7 +337,6 @@ async function nulls(opt = {}) {
     }
   });
 
-  const rlimit = rateLimit({ "windowMs": 30000, "limit": 30 });
   const upload = multer({ "dest": options.uploads });
   for (const action in apis) {
     const p = apis[action];
