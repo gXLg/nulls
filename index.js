@@ -337,7 +337,10 @@ async function nulls(opt = {}) {
     }
   });
 
-  const upload = multer({ "dest": options.uploads });
+  const upload = multer({
+    "dest": options.uploads,
+    "limits": { "fieldNestingDepth": 0 }
+  });
   for (const action in apis) {
     const p = apis[action];
     if (p.script == null) {
