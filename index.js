@@ -125,7 +125,7 @@ async function nulls(opt = {}) {
   app.set("trust proxy", options.proxies);
   app.use(async (req, res, next) => {
     const host = req.get("host");
-    if (host == options.domain && options.forceHttps && !req.secure)
+    if (host == options.domain && options.forceHTTPS && !req.secure)
       return res.redirect("https://" + host + req.url);
     next();
   });
