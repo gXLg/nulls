@@ -28,6 +28,7 @@ const parser = optparser([
   { "name": "uploadLimit",   "types": [false, 0]                 },
   { "name": "forceHTTPS",    "types": [false]                    },
   { "name": "init",          "types": [() => {}, async () => {}] },
+  { "name": "postInit",      "types": [() => {}, async () => {}] },
   { "name": "hook",          "types": [() => {}, async () => {}] },
   { "name": "nulls",         "types": ["./nulls/"]               },
   { "name": "root",          "types": ["root.html"]              },
@@ -104,6 +105,9 @@ async function nulls(opt = {}) {
   }
 
   const app = express();
+
+  // init
+
   await options.init(app);
   app.use((req, res, next) => { res.setHeader("X-Powered-By", "Express + nulls"); next(); });
 
@@ -129,6 +133,8 @@ async function nulls(opt = {}) {
 
   app.use(helmet.frameguard({ "action": "sameorigin" }));
   app.use(cors({ "origin": options.domain }));
+
+  // parsing
 
   const paths = new Set();
   const open = [options.nulls];
@@ -321,6 +327,8 @@ async function nulls(opt = {}) {
     htmls[file] = html.html();
   }
 
+  // special routes
+
   app.head("*", (req, res) => {
     res.type("html");
     res.end();
@@ -415,16 +423,19 @@ async function nulls(opt = {}) {
 
       res.end(`
 <!DOCTYPE html>
-<html> <head> <meta http-equiv="refresh" content="0;url=${url}" />
-<script> window.location.href = "${url}"; </script>
-</head> <body> Redirecting... </body> </html>
-`);
+<html><head><meta http-equiv="refresh" content="0;url=${url}"/>
+<script>window.location.href = "${url}";</script>
+</head><body>Redirecting...</body></html>
+`.trim());
 
     });
   }
 
-  app.get("*", async (req, res) => {
+  await options.postInit(app);
 
+  // rendering
+
+  app.get("*", async (req, res) => {
     async function render(partf, ...args) {
       const file = join(options.nulls, partf);
       if (!(file in htmls)) {
