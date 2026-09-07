@@ -30,8 +30,8 @@
     "cheerio": "1.2.0",
     "cookie-parser": "1.4.7",
     "cors": "2.8.6",
+    "express": "5.2.1",
     "express-rate-limit": "7.5.1",
-    "express": "4.22.2",
     "gxlg-utils": "1.4.0",
     "helmet": "8.2.0",
     "multer": "2.2.0"
