@@ -420,11 +420,16 @@ async function nulls(opt = {}) {
   for (const name in options.redirects) {
     app.get(name, async (req, res) => {
       const url = await options.redirects[name](req, res);
+      const sanit = url
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;");
 
       res.end(`
 <!DOCTYPE html>
-<html><head><meta http-equiv="refresh" content="0;url=${url}"/>
-<script>window.location.href = "${url}";</script>
+<html><head><meta http-equiv="refresh" content="0;url=${sanit}"/>
+<script>window.location.href = "${sanit}";</script>
 </head><body>Redirecting...</body></html>
 `.trim());
 
@@ -435,7 +440,7 @@ async function nulls(opt = {}) {
 
   // rendering
 
-  app.get("*", async (req, res) => {
+  app.get("*splat", async (req, res) => {
     async function render(partf, ...args) {
       const file = join(options.nulls, partf);
       if (!(file in htmls)) {
