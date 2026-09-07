@@ -329,7 +329,7 @@ async function nulls(opt = {}) {
 
   // special routes
 
-  app.head("*", (req, res) => {
+  app.head("*splat", (req, res) => {
     res.type("html");
     res.end();
   });
