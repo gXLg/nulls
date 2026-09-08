@@ -34,6 +34,6 @@
     "express-rate-limit": "7.5.1",
     "gxlg-utils": "1.4.0",
     "helmet": "8.2.0",
-    "multer": "2.2.0"
+    "multer": "2.3.0"
   }
 }
